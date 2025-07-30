@@ -70,7 +70,7 @@ python manage.py runserver
 3. Run the bot script to start sending:
 
 ```bash
-python send_whatsapp_messages.py
+python manage.py send_scheduled_messages
 ```
 
 ---

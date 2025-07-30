@@ -28,6 +28,13 @@ class ScheduledMessage(models.Model):
         ],
         default='active'
     )
+    image = models.ImageField(
+        "Optional Image",
+        upload_to="scheduled_messages/images/",
+        null=True,
+        blank=True,
+        help_text="Optional image to send with the message"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

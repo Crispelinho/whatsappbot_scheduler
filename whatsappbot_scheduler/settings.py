@@ -1,3 +1,4 @@
+from celery.schedules import crontab
 """
 Django settings for whatsappbot_scheduler project.
 
@@ -112,6 +113,22 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
+# Celery Configuration
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+# Celery Beat Schedule
+CELERY_BEAT_SCHEDULE = {
+    'send-scheduled-messages-every-minute': {
+        'task': 'notifications_scheduler.tasks.send_scheduled_messages_task',
+        'schedule': crontab(),  # cada minuto
+    },
+}
 
 
 # Static files (CSS, JavaScript, Images)

@@ -55,22 +55,48 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 5. Run the development server
+
+### 5. Instala y ejecuta Redis (requerido para Celery)
+
+Descarga e instala Redis para Windows desde https://github.com/tporadowski/redis/releases
+Inicia el servicio de Redis antes de continuar.
+
+### 6. Ejecuta el servidor de desarrollo
 
 ```bash
 python manage.py runserver
+```
+
+### 7. Ejecuta Celery y Celery Beat (Windows)
+
+Usa el archivo por lotes incluido para lanzar ambos procesos automáticamente:
+
+```bat
+start_celery_windows.bat
+```
+
+Esto abrirá dos ventanas: una para el worker y otra para el scheduler (beat).
+
+Si prefieres hacerlo manualmente:
+
+```powershell
+celery -A whatsappbot_scheduler worker --pool=solo --loglevel=info
+celery -A whatsappbot_scheduler beat --loglevel=info
 ```
 
 ---
 
 ## 💡 Example Usage
 
-1. Log in to the Django Admin.
-2. Create your Clients and Message Schedules.
-3. Run the bot script to start sending:
+
+1. Ingresa al Django Admin.
+2. Crea tus Clientes y Programaciones de Mensajes.
+3. El envío se realizará automáticamente cada minuto gracias a Celery Beat.
+4. Si quieres forzar el envío manualmente, ejecuta:
 
 ```bash
 python manage.py send_scheduled_messages
+python manage.py enqueue_scheduled_messages
 ```
 
 ---

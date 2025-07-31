@@ -1,4 +1,3 @@
-from celery.schedules import crontab
 """
 Django settings for whatsappbot_scheduler project.
 
@@ -12,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from celery.schedules import crontab
+from import_export.formats.base_formats import CSV, XLSX
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
     'import_export',
     'notifications_scheduler',
     'clients',
+    'sales',
 ]
 
 MIDDLEWARE = [
@@ -129,6 +131,10 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(),  # cada minuto
     },
 }
+
+# Import-Export Configuration
+IMPORT_EXPORT_USE_TRANSACTIONS = True
+IMPORT_EXPORT_FORMATS = [CSV, XLSX]
 
 
 # Static files (CSS, JavaScript, Images)

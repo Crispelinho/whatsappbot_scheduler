@@ -35,6 +35,13 @@ class ScheduledMessage(models.Model):
         blank=True,
         help_text="Optional image to send with the message"
     )
+    video = models.FileField(
+        "Optional Video",
+        upload_to="scheduled_messages/videos/",
+        null=True,
+        blank=True,
+        help_text="Optional video to send with the message"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

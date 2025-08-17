@@ -19,7 +19,7 @@ from notifications_scheduler.models import ScheduledMessage, ClientMessage
 
 
 class WhatsAppSenderInterface:
-    def send_message(self, phone_number: str, message: str, image_path: str) -> tuple[bool, str]:
+    def send_message(self, phone_number: str, message: str, image_path: str, video_path: str) -> tuple[bool, str]:
         raise NotImplementedError
 
 
@@ -56,7 +56,7 @@ class SeleniumWhatsAppSender(WhatsAppSenderInterface):
         SeleniumWhatsAppSender._driver = driver
         return driver
 
-    def send_message(self, phone_number: str, message: str, image_path: str) -> tuple[bool, str]:
+    def send_message(self, phone_number: str, message: str, image_path: str, video_path: str) -> tuple[bool, str]:
         driver = self.driver
         pyperclip.copy(message)
         try:
@@ -93,7 +93,22 @@ class SeleniumWhatsAppSender(WhatsAppSenderInterface):
                 )
                 enviar_btn.click()
                 time.sleep(5)
-            return True, "Mensaje y/o imagen enviados correctamente"
+            if video_path:
+                # Adjuntar video
+                adjuntar_btn = WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH, "//button[@title='Adjuntar']"))
+                )
+                adjuntar_btn.click()
+                time.sleep(1)
+                input_file = driver.find_element(By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]')
+                input_file.send_keys(video_path)
+                time.sleep(3)
+                enviar_btn = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//div[@aria-label="Enviar"]'))
+                )
+                enviar_btn.click()
+                time.sleep(5)
+            return True, "Mensaje y/o imagen y/o video enviado(s) correctamente"        
         except Exception as e:
             return False, str(e)
 
@@ -131,8 +146,9 @@ class Command(BaseCommand):
                     phone = client_msg.client.phone_number
                     text = scheduled.message_text
                     image = scheduled.image.path if scheduled.image else None
+                    video = scheduled.video.path if scheduled.video else None
                     try:
-                        success, response = self.whatsapp_sender.send_message(phone, text, image)
+                        success, response = self.whatsapp_sender.send_message(phone, text, image, video)
                         if success:
                             client_msg.send_status = 'sent'
                             client_msg.send_datetime = timezone.now()

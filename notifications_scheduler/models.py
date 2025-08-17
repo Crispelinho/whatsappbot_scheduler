@@ -60,6 +60,7 @@ class ErrorType(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=50, unique=True)  # e.g. NETWORK, BLOCKED, INVALID_NUMBER
     description = models.TextField()
+    retryable = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -106,6 +107,9 @@ class ClientScheduledMessage(models.Model):
         on_delete=models.CASCADE,
         related_name="client_message"
     )
+    retry_count = models.PositiveIntegerField(default=0)
+    max_retries = models.PositiveIntegerField(default=3)
+    last_retry_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -121,3 +125,8 @@ class ClientScheduledMessage(models.Model):
 
     def __str__(self):
         return f"Message to {self.client.full_name} - {self.response.status}"
+
+    def can_retry(self):
+            if not self.error_type:
+                return False
+            return self.error_type.code in ["NETWORK", "TIMEOUT", "RATE_LIMIT"] and self.retry_count < 5

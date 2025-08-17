@@ -72,7 +72,7 @@ python manage.py runserver
 Usa el archivo por lotes incluido para lanzar ambos procesos automáticamente:
 
 ```bat
-start_celery_windows.bat
+.\start_celery_windows.bat
 ```
 
 Esto abrirá dos ventanas: una para el worker y otra para el scheduler (beat).

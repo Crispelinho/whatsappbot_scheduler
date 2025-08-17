@@ -1,6 +1,5 @@
 # notifications_scheduler/management/commands/send_scheduled_messages.py
 
-
 import os
 import time
 import pyperclip
@@ -15,7 +14,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from notifications_scheduler.models import ScheduledMessage, ClientMessage
+from notifications_scheduler.models import ScheduledMessage, ClientScheduledMessage, MessageResponse, ErrorType
 
 
 class WhatsAppSenderInterface:
@@ -52,7 +51,7 @@ class SeleniumWhatsAppSender(WhatsAppSenderInterface):
             )
         except Exception as e:
             driver.quit()
-            raise Exception("No se pudo iniciar sesión en WhatsApp Web: " + str(e))
+            raise Exception("Could not log in to WhatsApp Web: " + str(e))
         SeleniumWhatsAppSender._driver = driver
         return driver
 
@@ -65,50 +64,53 @@ class SeleniumWhatsAppSender(WhatsAppSenderInterface):
                 EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"]'))
             )
             time.sleep(2)
-            # Detectar si el número es inválido
+
+            # Detect invalid number
             try:
                 driver.find_element(By.XPATH, '//div[contains(text(),"no está en WhatsApp")]')
-                return False, "El número no está en WhatsApp"
+                return False, "INVALID_NUMBER"
             except:
                 pass
-            cajas = driver.find_elements(By.XPATH, '//div[@contenteditable="true"]')
-            caja = cajas[-1]
-            caja.click()
+
+            boxes = driver.find_elements(By.XPATH, '//div[@contenteditable="true"]')
+            box = boxes[-1]
+            box.click()
             time.sleep(0.5)
-            caja.send_keys(Keys.CONTROL, 'v')
-            caja.send_keys(Keys.ENTER)
+            box.send_keys(Keys.CONTROL, 'v')
+            box.send_keys(Keys.ENTER)
             time.sleep(2)
+
             if image_path:
-            # Adjuntar imagen
-                adjuntar_btn = WebDriverWait(driver, 20).until(
+                attach_btn = WebDriverWait(driver, 20).until(
                     EC.presence_of_element_located((By.XPATH, "//button[@title='Adjuntar']"))
                 )
-                adjuntar_btn.click()
+                attach_btn.click()
                 time.sleep(1)
                 input_file = driver.find_element(By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]')
                 input_file.send_keys(image_path)
                 time.sleep(3)
-                enviar_btn = WebDriverWait(driver, 10).until(
+                send_btn = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, '//div[@aria-label="Enviar"]'))
                 )
-                enviar_btn.click()
+                send_btn.click()
                 time.sleep(5)
+
             if video_path:
-                # Adjuntar video
-                adjuntar_btn = WebDriverWait(driver, 20).until(
+                attach_btn = WebDriverWait(driver, 20).until(
                     EC.presence_of_element_located((By.XPATH, "//button[@title='Adjuntar']"))
                 )
-                adjuntar_btn.click()
+                attach_btn.click()
                 time.sleep(1)
                 input_file = driver.find_element(By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]')
                 input_file.send_keys(video_path)
                 time.sleep(3)
-                enviar_btn = WebDriverWait(driver, 10).until(
+                send_btn = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, '//div[@aria-label="Enviar"]'))
                 )
-                enviar_btn.click()
+                send_btn.click()
                 time.sleep(5)
-            return True, "Mensaje y/o imagen y/o video enviado(s) correctamente"        
+
+            return True, "SENT"
         except Exception as e:
             return False, str(e)
 
@@ -118,22 +120,21 @@ class Command(BaseCommand):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Inyección de dependencia: puedes cambiar SeleniumWhatsAppSender por un mock para pruebas
         self.whatsapp_sender = SeleniumWhatsAppSender()
 
     def handle(self, *args, **kwargs):
         now = timezone.now()
-        scheduled_messages = ScheduledMessage.objects.filter(status='active', start_datetime__lte=now)
-        
+        scheduled_messages = ScheduledMessage.objects.filter(status="active", start_datetime__lte=now)
+
         for scheduled in scheduled_messages:
-            batch_size = scheduled.recipient_count if scheduled.recipient_count > 0 else 50  # Valor por defecto si es 0
+            batch_size = scheduled.recipient_count if scheduled.recipient_count > 0 else 50
             has_more = True
             offset = 0
 
             while has_more:
-                pending_messages = ClientMessage.objects.filter(
+                pending_messages = ClientScheduledMessage.objects.filter(
                     scheduled_message=scheduled,
-                    send_status='pending'
+                    response__status="pending"
                 )[offset:offset + batch_size]
 
                 if not pending_messages.exists():
@@ -147,25 +148,40 @@ class Command(BaseCommand):
                     text = scheduled.message_text
                     image = scheduled.image.path if scheduled.image else None
                     video = scheduled.video.path if scheduled.video else None
+
                     try:
-                        success, response = self.whatsapp_sender.send_message(phone, text, image, video)
+                        success, response_code = self.whatsapp_sender.send_message(phone, text, image, video)
+
+                        msg_response: MessageResponse = client_msg.response
                         if success:
-                            client_msg.send_status = 'sent'
-                            client_msg.send_datetime = timezone.now()
-                            client_msg.response = response
-                            client_msg.save()
+                            msg_response.status = "sent"
+                            msg_response.error_type = None
+                            client_msg.sent_at = timezone.now()
                             self.stdout.write(f"Sent message to {phone}")
                         else:
-                            client_msg.send_status = 'failed'
-                            client_msg.response = response
-                            client_msg.save()
-                            self.stderr.write(f"Failed to send message to {phone}: {response}")
+                            msg_response.status = "failed"
+                            error = ErrorType.objects.filter(code=response_code).first()
+                            if not error and response_code not in ["SENT", "PENDING"]:
+                                # Create unknown error dynamically if not registered
+                                error = ErrorType.objects.get_or_create(
+                                    code="UNKNOWN", defaults={"name": "Unknown Error", "description": response_code}
+                                )[0]
+                            msg_response.error_type = error
+                            self.stderr.write(f"Failed to send message to {phone}: {response_code}")
+
+                        msg_response.save()
+                        client_msg.save()
+
                     except Exception as e:
-                        client_msg.send_status = 'failed'
-                        client_msg.response = str(e)
+                        msg_response: MessageResponse = client_msg.response
+                        msg_response.status = "failed"
+                        error = ErrorType.objects.get_or_create(
+                            code="EXCEPTION", defaults={"name": "Unhandled Exception", "description": str(e)}
+                        )[0]
+                        msg_response.error_type = error
+                        msg_response.save()
                         client_msg.save()
                         self.stderr.write(f"Exception sending message to {phone}: {e}")
 
                 offset += batch_size
-                # Espera entre lotes para evitar bloqueos o saturación
-                time.sleep(60)
+                time.sleep(60)  # avoid ban / overload

@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
-from clients.models import Client  # Assuming your clients app is named 'clients'
+from django.core.exceptions import ValidationError
+from clients.models import Client
+
 
 class ScheduledMessage(models.Model):
     subject = models.CharField("Subject", max_length=255)
@@ -10,23 +12,23 @@ class ScheduledMessage(models.Model):
         "Send Frequency",
         max_length=20,
         choices=[
-            ('daily', 'Daily'),
-            ('weekly', 'Weekly'),
-            ('monthly', 'Monthly'),
-            ('in_batches', 'In Batches'),
+            ("daily", "Daily"),
+            ("weekly", "Weekly"),
+            ("monthly", "Monthly"),
+            ("in_batches", "In Batches"),
         ],
-        default='daily'
+        default="daily"
     )
     recipient_count = models.PositiveIntegerField("Number of Recipients", default=0)
     status = models.CharField(
         "Status",
         max_length=20,
         choices=[
-            ('active', 'Active'),
-            ('paused', 'Paused'),
-            ('finished', 'Finished'),
+            ("active", "Active"),
+            ("paused", "Paused"),
+            ("finished", "Finished"),
         ],
-        default='active'
+        default="active"
     )
     image = models.ImageField(
         "Optional Image",
@@ -53,29 +55,69 @@ class ScheduledMessage(models.Model):
         return f"{self.subject} ({self.status})"
 
 
-class ClientMessage(models.Model):
-    scheduled_message = models.ForeignKey(ScheduledMessage, on_delete=models.CASCADE, related_name='client_messages')
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
-    sent_at = models.DateTimeField("Sent Date and Time", null=True, blank=True)
-    send_status = models.CharField(
-        "Send Status",
-        max_length=20,
-        choices=[
-            ('pending', 'Pending'),
-            ('sent', 'Sent'),
-            ('failed', 'Failed'),
-        ],
-        default='pending'
-    )
-    response = models.TextField("Response / Result", null=True, blank=True)
+class ErrorType(models.Model):
+    """Error types (e.g., Network, WhatsApp Block, Invalid Client, etc.)"""
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=50, unique=True)  # e.g. NETWORK, BLOCKED, INVALID_NUMBER
+    description = models.TextField()
 
+    def __str__(self):
+        return self.name
+
+
+class MessageResponse(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("sent", "Sent"),
+        ("failed", "Failed"),
+    ]
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
+    error_type = models.ForeignKey(
+        ErrorType,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="responses"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Response {self.id} - {self.status}"
+
+    def clean(self):
+        if self.status == "failed" and not self.error_type:
+            raise ValidationError("You must assign an error type if the status is 'failed'.")
+        if self.status in ["pending", "sent"] and self.error_type:
+            raise ValidationError("You cannot assign an error type if the status is not 'failed'.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class ClientScheduledMessage(models.Model):
+    scheduled_message = models.ForeignKey(ScheduledMessage, on_delete=models.CASCADE, related_name="client_messages")
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="scheduled_messages")
+    sent_at = models.DateTimeField("Sent Date and Time", null=True, blank=True)
+    response = models.OneToOneField(
+        MessageResponse,
+        on_delete=models.CASCADE,
+        related_name="client_message"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Client Message"
         verbose_name_plural = "Client Messages"
-        unique_together = ('scheduled_message', 'client')
+        constraints = [
+            models.UniqueConstraint(
+                fields=["scheduled_message", "client"],
+                name="unique_scheduled_message_per_client"
+            )
+        ]
 
     def __str__(self):
-        return f"Message to {self.client.full_name} - {self.send_status}"
+        return f"Message to {self.client.full_name} - {self.response.status}"

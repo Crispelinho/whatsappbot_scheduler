@@ -1,0 +1,42 @@
+[
+  {
+    "model": "notifications_scheduler.errortype",
+    "pk": 1,
+    "fields": {
+      "code": "NETWORK",
+      "description": "Network failure when sending message"
+    }
+  },
+  {
+    "model": "notifications_scheduler.errortype",
+    "pk": 2,
+    "fields": {
+      "code": "BLOCKED",
+      "description": "Recipient has blocked the sender"
+    }
+  },
+  {
+    "model": "notifications_scheduler.errortype",
+    "pk": 3,
+    "fields": {
+      "code": "INVALID_NUMBER",
+      "description": "Invalid phone number format or unreachable"
+    }
+  },
+  {
+    "model": "notifications_scheduler.errortype",
+    "pk": 4,
+    "fields": {
+      "code": "TIMEOUT",
+      "description": "Timeout while sending message"
+    }
+  },
+  {
+    "model": "notifications_scheduler.errortype",
+    "pk": 5,
+    "fields": {
+      "code": "UNKNOWN",
+      "description": "Unknown error during message delivery"
+    }
+  }
+]

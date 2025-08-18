@@ -12,6 +12,7 @@ class ErrorCode(Enum):
     TIMEOUT = "TIMEOUT"
     RATE_LIMIT = "RATE_LIMIT"
     UNKNOWN = "UNKNOWN"
+    NO_INPUT_BOX = "NO_INPUT_BOX"
     EXCEPTION = "EXCEPTION"
 
 class ScheduledMessage(models.Model):

@@ -4,6 +4,7 @@ import time
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.db.models import Q
 from notifications_scheduler.models import ScheduledMessage, ClientScheduledMessage
 from notifications_scheduler.senders.whatsapp_sender import WhatsAppSeleniumSender
 from notifications_scheduler.services import send_message_to_client
@@ -26,8 +27,8 @@ class Command(BaseCommand):
 
             while has_more:
                 pending_messages = ClientScheduledMessage.objects.filter(
-                    scheduled_message=scheduled,
-                    response__status="pending"
+                    Q(response__status="pending") |
+                    Q(response__status="failed", response__error_type__code__in=["NETWORK", "TIMEOUT", "WHATSAPP_DOWN"])
                 )[offset:offset + batch_size]
 
                 if not pending_messages.exists():

@@ -3,6 +3,7 @@ from .models import ClientScheduledMessage, ErrorType, MessageResponse, ErrorCod
 from .senders.base import SocialNetworkSenderInterface
 
 def send_message_to_client(client_msg: ClientScheduledMessage, social_network_sender: SocialNetworkSenderInterface) -> None:
+    area_code = client_msg.client.area_code or ""
     phone = client_msg.client.phone_number
     text = client_msg.scheduled_message.message_text
     image = client_msg.scheduled_message.image.path if client_msg.scheduled_message.image else None
@@ -13,9 +14,9 @@ def send_message_to_client(client_msg: ClientScheduledMessage, social_network_se
         status=MessageResponse.Status.PENDING,
         error_type=None,
     )
-    
+
     try:
-        success, response_code = social_network_sender.send_message(phone, text, image, video)
+        success, response_code = social_network_sender.send_message(area_code, phone, text, image, video)
         if success:
             msg_response.status = MessageResponse.Status.SENT
             msg_response.error_type = None

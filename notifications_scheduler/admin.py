@@ -24,7 +24,7 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
 
 @admin.register(MessageResponse)
 class MessageResponseAdmin(ImportExportModelAdmin):
-    list_display = ('id', 'status', 'error_type', 'created_at')
+    list_display = ('id', 'client_message__client__full_name', 'status', 'error_type', 'created_at')
     list_filter = ('status', 'error_type')
     search_fields = ('client_message__client__full_name', 'client_message__client__phone_number')
 

@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 
 from notifications_scheduler.models import ErrorCode
@@ -56,67 +57,151 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         WhatsAppSeleniumSender._driver = driver
         return driver
 
-    def _attach_and_send_file(self, file_path: str):
+    def _wait_for_element(self, by, selector, timeout=20) -> tuple[bool, any]:
+        """
+        Espera a que un elemento esté presente y retornarlo.
+        Retorna (success, element_or_error_message)
+        """
+        try:
+            element = WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((by, selector))
+            )
+            return True, element
+        except TimeoutException:
+            return False, f"Timeout waiting for element: {selector}"
+
+    def _attach_and_send_file(self, file_path: str) -> tuple[bool, MessageSendResult]:
         """Adjunta archivo (imagen o video) y lo envía."""
-        attach_btn = WebDriverWait(self.driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, "//button[@title='Adjuntar']"))
-        )
+        success, attach_btn = self._wait_for_element(By.XPATH, "//button[@title='Adjuntar']", 20)
+        if not success:
+            return False, MessageSendResult(success=False, error_code=ErrorCode.TIMEOUT, message=attach_btn)
+
         attach_btn.click()
         time.sleep(1)
 
-        input_file = self.driver.find_element(
-            By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'
-        )
-        input_file.send_keys(file_path)
-        time.sleep(3)
+        try:
+            input_file = self.driver.find_element(
+                By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'
+            )
+            input_file.send_keys(file_path)
+            time.sleep(3)
+        except Exception as e:
+            return False, MessageSendResult(success=False, error_code=ErrorCode.EXCEPTION, message=str(e))
 
-        send_btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, '//div[@aria-label="Enviar"]'))
-        )
+        success, send_btn = self._wait_for_element(By.XPATH, '//div[@aria-label="Enviar"]', 10)
+        if not success:
+            return False, MessageSendResult(success=False, error_code=ErrorCode.TIMEOUT, message=send_btn)
+
         send_btn.click()
         time.sleep(5)
+        return True, None
 
-    def send_message(self, phone_number: str, message: str, image_path: str = None, video_path: str = None) -> dict:
+
+    def _is_invalid_number(self) -> bool:
+        """Detecta si el número no está en WhatsApp."""
+        try:
+            self.driver.find_element(By.XPATH, '//div[contains(text(),"no está en WhatsApp")]')
+            return True
+        except:
+            return False  
+    
+    def _write_message(self, message: str) -> bool:
+        """Escribe y envía un mensaje en el chat. Retorna True si se pudo escribir."""
+        boxes = self.driver.find_elements(By.XPATH, '//div[@contenteditable="true"]')
+        if not boxes:
+            return False
+
+        box = boxes[-1]
+        box.click()
+        time.sleep(0.3)
+        box.send_keys(Keys.CONTROL, 'v')
+        box.send_keys(Keys.ENTER)
+        return True
+    
+    def send_message(
+        self,
+        phone_number: str,
+        message: str = None,
+        image_path: str = None,
+        video_path: str = None
+    ) -> MessageSendResult:
         """
         Envía mensaje por WhatsApp Web.
-        Retorna un dict con estado, error y código de respuesta.
+        Retorna un MessageSendResult con estado, error y mensaje.
         """
-        driver = self.driver
-        pyperclip.copy(message)
-
+        # Asegurarse de que el driver esté inicializado
+        if not self.driver:
+            self.driver = self._get_or_create_driver()
+        
+        # Validar número de teléfono
+        if not phone_number:
+            return MessageSendResult(
+                success=False,
+                error_code=ErrorCode.INVALID_NUMBER,
+                message="Phone number is required"
+            )
+        
+        # Verificar que el número comience con '+'
+        # if not phone_number.startswith("+"):
+        #     return MessageSendResult(
+        #         success=False,
+        #         error_code=ErrorCode.INVALID_NUMBER,
+        #         message="Phone number must start with '+'"
+        #     )
+        
+        # Verificar que WhatsApp Web esté cargado
+        if not self.driver.current_url.startswith("https://web.whatsapp.com"):
+            return MessageSendResult(
+                success=False,
+                error_code=ErrorCode.WHATSAPP_DOWN,
+                message="WhatsApp Web is not reachable"
+            )
+        
         try:
-            driver.get(f"https://web.whatsapp.com/send?phone={phone_number}")
-            WebDriverWait(driver, 120).until(
+            self.driver.get(f"https://web.whatsapp.com/send?phone={phone_number}")
+            WebDriverWait(self.driver, 120).until(
                 EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"]'))
             )
-            time.sleep(2)
+            time.sleep(1.5)
 
-            # Detectar número inválido
-            try:
-                driver.find_element(By.XPATH, '//div[contains(text(),"no está en WhatsApp")]')
-                return MessageSendResult(success=False, error_code=ErrorCode.INVALID_NUMBER, message="Number not on WhatsApp")
-            except:
-                pass
+            # Verificar número inválido
+            if self._is_invalid_number():
+                return MessageSendResult(
+                    success=False,
+                    error_code=ErrorCode.INVALID_NUMBER,
+                    message="Number not on WhatsApp"
+                )
 
-            # Escribir mensaje
-            boxes = driver.find_elements(By.XPATH, '//div[@contenteditable="true"]')
-            if not boxes:
-                return MessageSendResult(success=False, error_code=ErrorCode.NO_INPUT_BOX, message="Input box not found")
-
-            box = boxes[-1]
-            box.click()
-            time.sleep(0.5)
-            box.send_keys(Keys.CONTROL, 'v')
-            box.send_keys(Keys.ENTER)
-            time.sleep(2)
-
+            # Enviar mensaje si hay texto
+            if message:
+                pyperclip.copy(message)
+                if not self._write_message(message):
+                    return MessageSendResult(
+                        success=False,
+                        error_code=ErrorCode.NO_INPUT_BOX,
+                        message="Input box not found"
+                    )
+            message_sucess_send_result = "Message sent successfully"
             # Adjuntar archivos si existen
-            if image_path:
-                self._attach_and_send_file(image_path)
-            if video_path:
-                self._attach_and_send_file(video_path)
+            for file_path in [image_path, video_path]:
+                if file_path:
+                    success, message_send_result = self._attach_and_send_file(file_path)
+                    if not success:
+                        return message_send_result
+                    message_sucess_send_result = message_sucess_send_result + f" and {file_path} sent successfully"
 
-            return MessageSendResult(success=True, message="Message sent successfully")
+            return MessageSendResult(success=True, message=message_sucess_send_result)
+
+        except TimeoutException:
+            return MessageSendResult(
+                success=False,
+                error_code=ErrorCode.TIMEOUT,
+                message="Timeout waiting for WhatsApp Web to load chat"
+            )
 
         except Exception as e:
-            return MessageSendResult(success=False, error_code=ErrorCode.EXCEPTION, message=str(e))
+            return MessageSendResult(
+                success=False,
+                error_code=ErrorCode.EXCEPTION,
+                message=str(e)
+            )

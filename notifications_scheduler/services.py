@@ -8,7 +8,12 @@ def send_message_to_client(client_msg: ClientScheduledMessage, social_network_se
     image = client_msg.scheduled_message.image.path if client_msg.scheduled_message.image else None
     video = client_msg.scheduled_message.video.path if client_msg.scheduled_message.video else None
 
-    msg_response = client_msg.response
+    msg_response = MessageResponse(
+        client_message=client_msg,
+        status=MessageResponse.Status.PENDING,
+        error_type=None,
+    )
+    
     try:
         success, response_code = social_network_sender.send_message(phone, text, image, video)
         if success:

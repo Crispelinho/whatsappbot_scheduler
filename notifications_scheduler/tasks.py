@@ -4,8 +4,6 @@ from django.utils import timezone
 from .models import ClientScheduledMessage, ErrorCode, MessageResponse, ErrorType
 from .senders.whatsapp_sender import WhatsAppSeleniumSender
 
-SocialNetworkSender = WhatsAppSeleniumSender()
-
 @shared_task
 def send_scheduled_messages_task():
     print("Celery está ejecutando la tarea de envío programado")
@@ -30,11 +28,12 @@ def update_message_status(resp, success, response_code):
     resp.save(update_fields=["status", "error_type"])
 
 def process_failed_message(msg):
+
     msg.retry_count += 1
     msg.last_retry_at = timezone.now()
     msg.save(update_fields=["retry_count", "last_retry_at"])
 
-    success, response_code = SocialNetworkSender.send_message(
+    success, response_code = WhatsAppSeleniumSender.send_message(
         msg.client.phone_number,
         msg.scheduled_message.message_text,
         msg.scheduled_message.image.path if msg.scheduled_message.image else None,
@@ -46,6 +45,7 @@ def process_failed_message(msg):
 
 @shared_task
 def retry_failed_messages():
+    
     # Filtramos los mensajes que tienen respuesta fallida con errores retryables
     failed_messages = ClientScheduledMessage.objects.filter(
         response__status="failed",

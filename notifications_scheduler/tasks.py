@@ -1,7 +1,9 @@
 from celery import shared_task
 from django.core.management import call_command
 from django.utils import timezone
-from .models import ClientScheduledMessage, ErrorCode, MessageResponse, ErrorType
+
+from notifications_scheduler.senders.base import MessageSendResult
+from .models import ClientScheduledMessage, ResponseCode, MessageResponse, ResponseCode
 from .senders.whatsapp_sender import WhatsAppSeleniumSender
 
 @shared_task
@@ -11,21 +13,16 @@ def send_scheduled_messages_task():
 
 RETRYABLE_ERRORS = ["NETWORK", "TIMEOUT", "WHATSAPP_DOWN"]
 
-def update_message_status(resp, success, response_code):
+def update_message_status(resp: MessageResponse, success: bool, message_send_result: MessageSendResult):
     if success:
         resp.status = MessageResponse.Status.SENT
-        resp.error_type = None
+        resp.response_code = ResponseCode.SUCCESS.value
+        resp.description = message_send_result.message or "Sent successfully"
     else:
         resp.status = MessageResponse.Status.FAILED
-        error = ErrorCode(response_code) if response_code in ErrorCode._value2member_map_ else ErrorCode.UNKNOWN
-        error_type_obj = ErrorType.objects.filter(code=error.value).first()
-        if not error_type_obj:
-            error_type_obj, _ = ErrorType.objects.get_or_create(
-                code=ErrorCode.UNKNOWN.value,
-                defaults={"name": "Unknown Error", "description": response_code}
-            )
-        resp.error_type = error_type_obj
-    resp.save(update_fields=["status", "error_type"])
+        resp.response_code = message_send_result.error_code
+        resp.description = message_send_result.message
+    resp.save(update_fields=["status", "response_code", "description"])
 
 def process_failed_message(msg):
 
@@ -33,23 +30,23 @@ def process_failed_message(msg):
     msg.last_retry_at = timezone.now()
     msg.save(update_fields=["retry_count", "last_retry_at"])
 
-    success, response_code = WhatsAppSeleniumSender.send_message(
+    success, message_send_result = WhatsAppSeleniumSender.send_message(
         msg.client.phone_number,
         msg.scheduled_message.message_text,
         msg.scheduled_message.image.path if msg.scheduled_message.image else None,
         msg.scheduled_message.video.path if msg.scheduled_message.video else None
     )
 
-    update_message_status(msg.response, success, response_code)
+    update_message_status(msg.response, success, message_send_result)
     msg.save()
 
 @shared_task
 def retry_failed_messages():
     
-    # Filtramos los mensajes que tienen respuesta fallida con errores retryables
+    # Filtramos los mensajes que tienen respuesta fallida con response_code retryable
     failed_messages = ClientScheduledMessage.objects.filter(
         response__status="failed",
-        response__error_type__code__in=RETRYABLE_ERRORS
+        response__response_code__in=RETRYABLE_ERRORS
     )
 
     for msg in failed_messages:

@@ -28,7 +28,7 @@ class Command(BaseCommand):
             while has_more:
                 pending_messages = ClientScheduledMessage.objects.filter(
                     Q(response__status="pending") |
-                    Q(response__status="failed", response__error_type__code__in=["NETWORK", "TIMEOUT", "WHATSAPP_DOWN"])
+                    Q(response__status="failed", response__response_code__in=["NETWORK", "TIMEOUT", "WHATSAPP_DOWN"])
                 )[offset:offset + batch_size]
 
                 if not pending_messages.exists():

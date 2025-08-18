@@ -5,7 +5,9 @@ from django.core.exceptions import ValidationError
 from clients.models import Client
 from enum import Enum
 
-class ErrorCode(Enum):
+class ResponseCode(Enum):
+    """Response codes for message sending errors."""
+    SUCCESS = "SUCCESS"
     NETWORK = "NETWORK"
     BLOCKED = "BLOCKED"
     INVALID_NUMBER = "INVALID_NUMBER"
@@ -66,18 +68,6 @@ class ScheduledMessage(models.Model):
     def __str__(self):
         return f"{self.subject} ({self.status})"
 
-
-class ErrorType(models.Model):
-    """Error types (e.g., Network, SocialNetworkSenderInterface Block, Invalid Client, etc.)"""
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=50, unique=True, choices=[(e.value, e.name) for e in ErrorCode])
-    description = models.TextField()
-    retryable = models.BooleanField(default=False)
-
-    def __str__(self):
-        return self.name
-
-
 class MessageResponse(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -90,13 +80,9 @@ class MessageResponse(models.Model):
         related_name='response'
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
-    error_type = models.ForeignKey(
-        ErrorType,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="responses"
-    )
+    response_code = models.CharField(max_length=50, blank=True, null=True, choices=[(e.value, e.name) for e in ResponseCode])
+    description = models.TextField("Description", blank=True, null=True)
+    retryable = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -104,10 +90,10 @@ class MessageResponse(models.Model):
         return f"Response {self.id} - {self.status}"
 
     def clean(self):
-        if self.status == MessageResponse.Status.FAILED and not self.error_type:
-            raise ValidationError("You must assign an error type if the status is 'failed'.")
-        if self.status in [MessageResponse.Status.PENDING, MessageResponse.Status.SENT] and self.error_type:
-            raise ValidationError("You cannot assign an error type if the status is not 'failed'.")
+        if self.status == MessageResponse.Status.FAILED and not self.response_code:
+            raise ValidationError("You must assign a response_code if the status is 'failed'.")
+        if self.status in [MessageResponse.Status.PENDING, MessageResponse.Status.SENT] and self.response_code and self.response_code != ResponseCode.SUCCESS.value:
+            raise ValidationError("You cannot assign a non-success response_code if the status is not 'failed'.")
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -139,14 +125,14 @@ class ClientScheduledMessage(models.Model):
 
     @property
     def can_retry(self):
-        """Determina si se puede reintentar el envío según el error y cantidad de retries."""
-        if not hasattr(self, "response") or not self.response.error_type:
+        """Determina si se puede reintentar el envío según el response_code y cantidad de retries."""
+        if not hasattr(self, "response") or not self.response.response_code:
             return False
         return (
-            self.response.error_type.code in [
-                ErrorCode.NETWORK.value,
-                ErrorCode.TIMEOUT.value,
-                ErrorCode.RATE_LIMIT.value
+            self.response.response_code in [
+                ResponseCode.NETWORK.value,
+                ResponseCode.TIMEOUT.value,
+                ResponseCode.RATE_LIMIT.value
             ]
             and self.retry_count < self.max_retries
         )

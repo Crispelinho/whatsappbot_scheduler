@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'notifications_scheduler',
     'clients',
     'sales',
+    'appointments',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -84,6 +86,8 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 # Password validation

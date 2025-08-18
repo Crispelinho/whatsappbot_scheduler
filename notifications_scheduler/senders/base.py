@@ -4,12 +4,12 @@ from typing import Optional
 
 from attr import dataclass
 
-from notifications_scheduler.models import ErrorCode
+from notifications_scheduler.models import ResponseCode
 
 @dataclass
 class MessageSendResult:
     success: bool
-    error_code: Optional[ErrorCode] = None
+    error_code: Optional[ResponseCode] = None
     message: Optional[str] = None
     
 class SocialNetworkSenderInterface(ABC):

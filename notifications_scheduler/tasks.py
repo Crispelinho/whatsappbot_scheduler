@@ -46,13 +46,15 @@ def process_failed_message(msg):
 
 @shared_task
 def retry_failed_messages():
+    # Filtramos los mensajes que tienen respuesta fallida con errores retryables
     failed_messages = ClientScheduledMessage.objects.filter(
-        send_status="FAILED",
-        error_type__code__in=RETRYABLE_ERRORS
+        response__status="failed",
+        response__error_type__code__in=RETRYABLE_ERRORS
     )
+
     for msg in failed_messages:
-        if msg.can_retry():
+        if msg.can_retry:
+            # Aquí llamamos a tu función de reenvío / procesamiento
             process_failed_message(msg)
         else:
             print(f"Message {msg.id} cannot be retried due to max retries or non-retryable error.")
-

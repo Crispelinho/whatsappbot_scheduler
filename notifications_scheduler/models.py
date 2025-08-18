@@ -13,6 +13,7 @@ class ErrorCode(Enum):
     RATE_LIMIT = "RATE_LIMIT"
     UNKNOWN = "UNKNOWN"
     NO_INPUT_BOX = "NO_INPUT_BOX"
+    WHATSAPP_DOWN = "WHATSAPP_DOWN"
     EXCEPTION = "EXCEPTION"
 
 class ScheduledMessage(models.Model):
@@ -83,6 +84,11 @@ class MessageResponse(models.Model):
         SENT = "sent", "Sent"
         FAILED = "failed", "Failed"
 
+    client_message = models.OneToOneField(
+        'ClientScheduledMessage',
+        on_delete=models.CASCADE,
+        related_name='response'
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
     error_type = models.ForeignKey(
         ErrorType,
@@ -112,11 +118,6 @@ class ClientScheduledMessage(models.Model):
     scheduled_message = models.ForeignKey(ScheduledMessage, on_delete=models.CASCADE, related_name="client_messages")
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="scheduled_messages")
     sent_at = models.DateTimeField("Sent Date and Time", null=True, blank=True)
-    response = models.OneToOneField(
-        MessageResponse,
-        on_delete=models.CASCADE,
-        related_name="client_message"
-    )
     retry_count = models.PositiveIntegerField(default=0)
     max_retries = models.PositiveIntegerField(default=3)
     last_retry_at = models.DateTimeField(null=True, blank=True)
@@ -136,11 +137,16 @@ class ClientScheduledMessage(models.Model):
     def __str__(self):
         return f"Message to {self.client.full_name} - {self.response.status}"
 
+    @property
     def can_retry(self):
-        if not self.response or not self.response.error_type:
+        """Determina si se puede reintentar el envío según el error y cantidad de retries."""
+        if not hasattr(self, "response") or not self.response.error_type:
             return False
-        return self.response.error_type.code in [
-            ErrorCode.NETWORK.value,
-            ErrorCode.TIMEOUT.value,
-            ErrorCode.RATE_LIMIT.value
-        ] and self.retry_count < self.max_retries
+        return (
+            self.response.error_type.code in [
+                ErrorCode.NETWORK.value,
+                ErrorCode.TIMEOUT.value,
+                ErrorCode.RATE_LIMIT.value
+            ]
+            and self.retry_count < self.max_retries
+        )

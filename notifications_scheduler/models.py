@@ -1,8 +1,18 @@
+
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from clients.models import Client
+from enum import Enum
 
+class ErrorCode(Enum):
+    NETWORK = "NETWORK"
+    BLOCKED = "BLOCKED"
+    INVALID_NUMBER = "INVALID_NUMBER"
+    TIMEOUT = "TIMEOUT"
+    RATE_LIMIT = "RATE_LIMIT"
+    UNKNOWN = "UNKNOWN"
+    EXCEPTION = "EXCEPTION"
 
 class ScheduledMessage(models.Model):
     subject = models.CharField("Subject", max_length=255)
@@ -56,9 +66,9 @@ class ScheduledMessage(models.Model):
 
 
 class ErrorType(models.Model):
-    """Error types (e.g., Network, WhatsApp Block, Invalid Client, etc.)"""
+    """Error types (e.g., Network, SocialNetworkSenderInterface Block, Invalid Client, etc.)"""
     name = models.CharField(max_length=100)
-    code = models.CharField(max_length=50, unique=True)  # e.g. NETWORK, BLOCKED, INVALID_NUMBER
+    code = models.CharField(max_length=50, unique=True, choices=[(e.value, e.name) for e in ErrorCode])
     description = models.TextField()
     retryable = models.BooleanField(default=False)
 
@@ -67,13 +77,12 @@ class ErrorType(models.Model):
 
 
 class MessageResponse(models.Model):
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("sent", "Sent"),
-        ("failed", "Failed"),
-    ]
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
 
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
     error_type = models.ForeignKey(
         ErrorType,
         null=True,
@@ -88,9 +97,9 @@ class MessageResponse(models.Model):
         return f"Response {self.id} - {self.status}"
 
     def clean(self):
-        if self.status == "failed" and not self.error_type:
+        if self.status == MessageResponse.Status.FAILED and not self.error_type:
             raise ValidationError("You must assign an error type if the status is 'failed'.")
-        if self.status in ["pending", "sent"] and self.error_type:
+        if self.status in [MessageResponse.Status.PENDING, MessageResponse.Status.SENT] and self.error_type:
             raise ValidationError("You cannot assign an error type if the status is not 'failed'.")
 
     def save(self, *args, **kwargs):
@@ -127,6 +136,10 @@ class ClientScheduledMessage(models.Model):
         return f"Message to {self.client.full_name} - {self.response.status}"
 
     def can_retry(self):
-            if not self.error_type:
-                return False
-            return self.error_type.code in ["NETWORK", "TIMEOUT", "RATE_LIMIT"] and self.retry_count < 5
+        if not self.response or not self.response.error_type:
+            return False
+        return self.response.error_type.code in [
+            ErrorCode.NETWORK.value,
+            ErrorCode.TIMEOUT.value,
+            ErrorCode.RATE_LIMIT.value
+        ] and self.retry_count < self.max_retries

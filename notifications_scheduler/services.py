@@ -1,10 +1,8 @@
 from django.utils import timezone
-from notifications_scheduler.models import ClientScheduledMessage, ErrorType
-from .management.commands.send_scheduled_messages import SeleniumWhatsAppSender, WhatsAppSenderInterface
+from .models import ClientScheduledMessage, ErrorType, MessageResponse, ErrorCode
+from .senders.base import SocialNetworkSenderInterface
 
-whatsapp_sender = SeleniumWhatsAppSender()  # instancia global para reutilizar sesión
-
-def send_message_to_client(client_msg: ClientScheduledMessage, whatsapp_sender: WhatsAppSenderInterface) -> None:
+def send_message_to_client(client_msg: ClientScheduledMessage, social_network_sender: SocialNetworkSenderInterface) -> None:
     phone = client_msg.client.phone_number
     text = client_msg.scheduled_message.message_text
     image = client_msg.scheduled_message.image.path if client_msg.scheduled_message.image else None
@@ -12,25 +10,32 @@ def send_message_to_client(client_msg: ClientScheduledMessage, whatsapp_sender: 
 
     msg_response = client_msg.response
     try:
-        success, response_code = whatsapp_sender.send_message(phone, text, image, video)
+        success, response_code = social_network_sender.send_message(phone, text, image, video)
         if success:
-            msg_response.status = "sent"
+            msg_response.status = MessageResponse.Status.SENT
             msg_response.error_type = None
             client_msg.sent_at = timezone.now()
         else:
-            msg_response.status = "failed"
-            error = ErrorType.objects.filter(code=response_code).first()
+            msg_response.status = MessageResponse.Status.FAILED
+            error_enum = ErrorCode(response_code) if response_code in ErrorCode._value2member_map_ else ErrorCode.UNKNOWN
+            error = ErrorType.objects.filter(code=error_enum.value).first()
             if not error:
                 error, _ = ErrorType.objects.get_or_create(
-                    code="UNKNOWN", defaults={"name": "Unknown Error", "description": response_code}
+                    code=ErrorCode.UNKNOWN.value, defaults={"name": "Unknown Error", "description": response_code}
                 )
             msg_response.error_type = error
+            print(f"Failed to send message to {phone}: {response_code}")
+
     except Exception as e:
-        msg_response.status = "failed"
-        error, _ = ErrorType.objects.get_or_create(
-            code="EXCEPTION", defaults={"name": "Unhandled Exception", "description": str(e)}
-        )
+        msg_response.status = MessageResponse.Status.FAILED
+        error = ErrorType.objects.get_or_create(
+            code=ErrorCode.EXCEPTION.value, defaults={"name": "Unhandled Exception", "description": str(e)}
+        )[0]
         msg_response.error_type = error
+        print(f"Exception sending message to {phone}: {e}")
+    msg_response.save()
+    client_msg.save()
+
 
     msg_response.save()
     client_msg.save()

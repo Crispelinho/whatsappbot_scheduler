@@ -16,14 +16,21 @@ class SocialNetworkSenderInterface(ABC):
     """Contrato para enviar mensajes a través de una red social o canal."""
 
     @abstractmethod
-    def send_message(self, client, message) -> MessageSendResult:
+    def send_message(
+        self,
+        area_code: str,
+        phone_number: str,
+        message: str = None,
+        image_path: str = None,
+        video_path: str = None
+    ) -> MessageSendResult:
         """
         Envía un mensaje al cliente.
-        Debe devolver un dict con información del resultado:
+        Debe devolver un MessageSendResult con información del resultado:
         {
             "success": True/False,
-            "error_type": "BLOCKED" | "INVALID_NUMBER" | None,
-            "response_id": "uuid o id del proveedor"
+            "error_code": "BLOCKED" | "INVALID_NUMBER" | None,
+            "message": "Mensaje enviado con éxito" | "Error al enviar el mensaje"
         }
         """
         pass

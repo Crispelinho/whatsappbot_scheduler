@@ -120,6 +120,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
     
     def send_message(
         self,
+        area_code: str,
         phone_number: str,
         message: str = None,
         image_path: str = None,

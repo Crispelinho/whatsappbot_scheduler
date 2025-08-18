@@ -30,7 +30,7 @@ def send_message_to_client(client_msg: ClientScheduledMessage, social_network_se
                     code=ErrorCode.UNKNOWN.value, defaults={"name": "Unknown Error", "description": result.message}
                 )
             msg_response.error_type = error
-            print(f"Failed to send message to {phone}: {result.message}")
+            print(f"Failed to send message to {area_code} {phone}: {result.message}")
 
     except Exception as e:
         msg_response.status = MessageResponse.Status.FAILED

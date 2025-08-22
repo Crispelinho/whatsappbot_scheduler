@@ -11,7 +11,7 @@ def send_scheduled_messages_task():
     print("Celery está ejecutando la tarea de envío programado")
     call_command('send_scheduled_messages')
 
-RETRYABLE_ERRORS = ["NETWORK", "TIMEOUT", "WHATSAPP_DOWN"]
+RETRYABLE_ERRORS = ["NETWORK", "TIMEOUT", "WHATSAPP_DOWN", "RATE_LIMIT"]
 
 def update_message_status(resp: MessageResponse, success: bool, message_send_result: MessageSendResult):
     if success:

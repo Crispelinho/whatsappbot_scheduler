@@ -8,6 +8,7 @@ from django.db.models import Q
 from notifications_scheduler.models import ScheduledMessage, ClientScheduledMessage
 from notifications_scheduler.senders.whatsapp_sender import WhatsAppSeleniumSender
 from notifications_scheduler.services import send_message_to_client
+from notifications_scheduler.tasks import RETRYABLE_ERRORS
 
 class Command(BaseCommand):
     help = "Send scheduled WhatsApp messages to clients"
@@ -28,7 +29,7 @@ class Command(BaseCommand):
             while has_more:
                 pending_messages = ClientScheduledMessage.objects.filter(
                     Q(response__status="pending") |
-                    Q(response__status="failed", response__response_code__in=["NETWORK", "TIMEOUT", "WHATSAPP_DOWN"])
+                    Q(response__status="failed", response__response_code__in=RETRYABLE_ERRORS)
                 )[offset:offset + batch_size]
 
                 if not pending_messages.exists():

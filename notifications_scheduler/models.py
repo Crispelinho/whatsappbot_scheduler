@@ -121,7 +121,8 @@ class ClientScheduledMessage(models.Model):
         ]
 
     def __str__(self):
-        return f"Message to {self.client.full_name} - {self.response.status}"
+        status = self.response.status if hasattr(self, "response") else "no response"
+        return f"Message to {self.client.full_name} - {status}"
 
     @property
     def can_retry(self):
@@ -132,6 +133,7 @@ class ClientScheduledMessage(models.Model):
             self.response.response_code in [
                 ResponseCode.NETWORK.value,
                 ResponseCode.TIMEOUT.value,
+                ResponseCode.WHATSAPP_DOWN.value,
                 ResponseCode.RATE_LIMIT.value
             ]
             and self.retry_count < self.max_retries

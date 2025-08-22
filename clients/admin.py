@@ -99,5 +99,5 @@ class ClientResource(resources.ModelResource):
 @admin.register(Client)
 class ClientAdmin(ImportExportModelAdmin):
     resource_class = ClientResource
-    list_display = ('full_name', 'phone_number', 'email', 'birthday', 'first_visit_date', 'created_at')
+    list_display = ('id', 'full_name', 'phone_number', 'email', 'birthday', 'first_visit_date', 'created_at')
     search_fields = ('full_name', 'phone_number', 'email')

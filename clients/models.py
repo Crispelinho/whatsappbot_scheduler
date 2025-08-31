@@ -1,6 +1,13 @@
+import secrets
+import string
 from django.db import models
 
 # Create your models here.
+
+def generate_unknown_name(self, length: int = 10) -> str:
+    chars = string.ascii_letters + string.digits
+    random_part = "".join(secrets.choice(chars) for _ in range(length))
+    return f"UNKNOWN_{random_part}"
 
 class Client(models.Model):
     class ClientType(models.TextChoices):
@@ -9,7 +16,7 @@ class Client(models.Model):
         INACTIVE = "inactive", "Inactiv"  # opcional, si quieres manejar clientes caídos
         VIP = "vip", "VIP"  # opcional, clientes especiales
     
-    full_name = models.CharField(max_length=100)
+    full_name = models.CharField(max_length=100, default=generate_unknown_name)
     area_code = models.CharField(max_length=5, default="57")
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
@@ -22,14 +29,14 @@ class Client(models.Model):
         default=ClientType.PROSPECT
     )
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["area_code", "phone_number"], 
-                name="unique_client_phone"
-            )
-        ]
+    # class Meta:
+    #     constraints = [
+    #         models.UniqueConstraint(
+    #             fields=["area_code", "phone_number"], 
+    #             name="unique_client_phone"
+    #         )
+    #     ]
 
     def __str__(self):
-        return f"{self.full_name} (+{self.area_code} {self.phone_number})"
+        return f"{self.full_name} ({self.area_code} {self.phone_number})"
     

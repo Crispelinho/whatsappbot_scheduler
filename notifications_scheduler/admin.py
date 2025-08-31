@@ -22,8 +22,7 @@ class ClientScheduledMessageResource(resources.ModelResource):
         try:
             return super().import_row(row, instance_loader, **kwargs)
         except Exception as e:
-            # Guardar en el log
-            log = ClientScheduledMessageImportErrorLog.objects.create(
+            ClientScheduledMessageImportErrorLog.objects.create(
                 line_number=row.get('id', 0),  # puedes usar row_number si prefieres
                 error_message=str(e)
             )
@@ -35,16 +34,28 @@ class ClientScheduledMessageResource(resources.ModelResource):
             return result
 
     def before_import_row(self, row, row_number=None, **kwargs):
-        print("Importing row:", row_number, row)
-        client_id = row.get("client_id")  # el nombre de la columna en tu archivo
-
+        client_id = row.get("client")  # el nombre de la columna en tu archivo
+        print("client_id:", client_id)
         if not client_id:
             # Puedes marcar esta fila como error
-            raise Exception(f"Fila {row_number}: client_id es obligatorio")
+            raise Exception(f"Fila {row_number}: client_id es obligatorio", row, "client_id", row.get("client"))
 
     class Meta:
         model = ClientScheduledMessage
-        fields = ("id", "client_id", "mensaje", "fecha_envio")  # los campos que importas
+        import_id_fields = ('id',)  # usamos el id real
+        fields = (
+            "id",
+            "scheduled_message",
+            "client",
+            "sent_at",
+            "retry_count",
+            "max_retries",
+            "last_retry_at",
+            "created_at",
+            "updated_at",
+        )
+        export_order = fields
+
 
 @admin.register(ClientScheduledMessage)
 class ClientScheduledMessageAdmin(ImportExportModelAdmin):

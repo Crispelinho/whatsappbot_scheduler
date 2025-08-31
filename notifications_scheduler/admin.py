@@ -1,6 +1,8 @@
+from import_export.results import RowResult
+from import_export import resources
 from django.contrib import admin
 from import_export.admin import ImportExportModelAdmin
-from .models import ScheduledMessage, ClientScheduledMessage, MessageResponse
+from .models import ClientScheduledMessageImportErrorLog, ScheduledMessage, ClientScheduledMessage, MessageResponse
 
 
 @admin.register(ScheduledMessage)
@@ -14,10 +16,40 @@ class ScheduledMessageAdmin(ImportExportModelAdmin):
     ordering = ('-start_datetime',)
     readonly_fields = ('created_at', 'updated_at')
 
+class ClientScheduledMessageResource(resources.ModelResource):
+
+    def import_row(self, row, instance_loader, **kwargs):
+        try:
+            return super().import_row(row, instance_loader, **kwargs)
+        except Exception as e:
+            # Guardar en el log
+            log = ClientScheduledMessageImportErrorLog.objects.create(
+                line_number=row.get('id', 0),  # puedes usar row_number si prefieres
+                error_message=str(e)
+            )
+
+            # Devolver un RowResult de error para que salga en el admin
+            result = RowResult()
+            result.errors.append(str(e))
+            result.import_type = RowResult.IMPORT_TYPE_ERROR
+            return result
+
+    def before_import_row(self, row, row_number=None, **kwargs):
+        print("Importing row:", row_number, row)
+        client_id = row.get("client_id")  # el nombre de la columna en tu archivo
+
+        if not client_id:
+            # Puedes marcar esta fila como error
+            raise Exception(f"Fila {row_number}: client_id es obligatorio")
+
+    class Meta:
+        model = ClientScheduledMessage
+        fields = ("id", "client_id", "mensaje", "fecha_envio")  # los campos que importas
 
 @admin.register(ClientScheduledMessage)
 class ClientScheduledMessageAdmin(ImportExportModelAdmin):
-    list_display = ('id', 'scheduled_message', 'client_name', 'status_display', 'sent_at')
+    resource_class = ClientScheduledMessageResource
+    list_display = ('id', 'scheduled_message', 'client', 'status_display', 'sent_at')
     list_filter = ('response__status',)
     search_fields = ('client__full_name', 'client__phone_number')
     ordering = ('-sent_at',)
@@ -37,15 +69,20 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
     client_name.short_description = "Client"
 
     def save_model(self, request, obj, form, change):
-        # Guardar el ClientScheduledMessage
-        super().save_model(request, obj, form, change)
-
-        # Crear MessageResponse si no existe
-        if not hasattr(obj, 'response'):
-            MessageResponse.objects.create(
-                client_message=obj,
-                status=MessageResponse.Status.PENDING
-            )
+        if not obj.client:
+            print("Error: No client assigned to ClientScheduledMessage", obj)
+            raise ValueError("Debes seleccionar un cliente antes de guardar.")
+        try:
+            super().save_model(request, obj, form, change)
+            if not hasattr(obj, 'response'):
+                MessageResponse.objects.create(
+                    client_message=obj,
+                    status=MessageResponse.Status.PENDING
+                )
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise
 
 @admin.register(MessageResponse)
 class MessageResponseAdmin(ImportExportModelAdmin):
@@ -62,3 +99,9 @@ class MessageResponseAdmin(ImportExportModelAdmin):
     def client_name(self, obj):
         return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)
     client_name.short_description = "Client"
+
+@admin.register(ClientScheduledMessageImportErrorLog)
+class ImportErrorLogAdmin(admin.ModelAdmin):
+    list_display = ("line_number", "error_message", "created_at", "client_scheduled_message")
+    ordering = ("-created_at",)
+    search_fields = ("error_message",)

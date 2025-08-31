@@ -1,4 +1,6 @@
 import locale
+import secrets
+import string
 from django.contrib import admin
 from import_export.admin import ImportExportModelAdmin
 from import_export import fields, resources
@@ -49,39 +51,53 @@ class ClientResource(resources.ModelResource):
         # Teléfonos encontrados en el archivo durante la importación
         self.imported_phones = {}
 
-    def before_import_row(self, row, row_number=None, **kwargs):
-        phone = row.get('phone_number', '').strip()
-        full_name = row.get('full_name', 'Sin nombre')
-        client_id = row.get('id', 'sin id')
+def generate_unknown_name(self, length: int = 10) -> str:
+    # caracteres aleatorios seguros
+    chars = string.ascii_letters + string.digits
+    random_part = ''.join(secrets.choice(chars) for _ in range(length))
+    return f"Unknown_{random_part}"
 
-        # Permitir que se guarde como None si está vacío
-        if phone == "":
-            row['phone_number'] = None
-            return
+def before_import_row(self, row, row_number=None, **kwargs):
+    phone = (row.get('phone_number') or "").strip()
+    
+    # Si no viene nombre, generar uno aleatorio
+    full_name = row.get('full_name')
+    if full_name:
+        full_name = full_name.strip()
+    else:
+        full_name = "UNKNOWN_" + self.generate_unknown_name().upper()
 
-        # Verificar duplicado en BD
-        if phone in self.existing_phones:
-            db_id, db_name = self.existing_phones[phone]
-            # Adjuntar advertencia a este row
-            row_result: RowResult = kwargs.get("row_result")
-            if row_result:
-                row_result.warnings.append(
-                    f"🚫 Teléfono duplicado con base de datos: '{full_name}' con id {client_id} usa el número '{phone}', ya asignado a '{db_name}' con id {db_id}."
-                )
-            return  # Aún así se permite continuar
+    client_id = row.get('id', 'sin id')
 
-        # Verificar duplicado dentro del archivo
-        if phone in self.imported_phones:
-            prev_id, prev_name = self.imported_phones[phone]
-            row_result: RowResult = kwargs.get("row_result")
-            if row_result:
-                row_result.warnings.append(
-                    f"⚠️ Teléfono duplicado en archivo: '{full_name}' con id {client_id} repite número '{phone}', ya usado por '{prev_name}' con id {prev_id}."
-                )
-            return
+    # Permitir que se guarde como None si está vacío
+    if phone == "":
+        row['phone_number'] = None
+        row['full_name'] = full_name  # asegurar que se guarde algo
+        return
 
-        # Registrar como visto
-        self.imported_phones[phone] = (client_id, full_name)
+    # Verificar duplicado en BD
+    if phone in self.existing_phones:
+        db_id, db_name = self.existing_phones[phone]
+        row_result: RowResult = kwargs.get("row_result")
+        if row_result:
+            row_result.warnings.append(
+                f"🚫 Teléfono duplicado con base de datos: '{full_name}' con id {client_id} usa el número '{phone}', ya asignado a '{db_name}' con id {db_id}."
+            )
+        return
+
+    # Verificar duplicado dentro del archivo
+    if phone in self.imported_phones:
+        prev_id, prev_name = self.imported_phones[phone]
+        row_result: RowResult = kwargs.get("row_result")
+        if row_result:
+            row_result.warnings.append(
+                f"⚠️ Teléfono duplicado en archivo: '{full_name}' con id {client_id} repite número '{phone}', ya usado por '{prev_name}' con id {prev_id}."
+            )
+        return
+
+    # Registrar como visto
+    self.imported_phones[phone] = (client_id, full_name)
+    row['full_name'] = full_name  # asegurar que siempre tenga valor
 
     class Meta:
         model = Client
@@ -89,15 +105,19 @@ class ClientResource(resources.ModelResource):
         fields = (
             'id',
             'full_name',
+            'area_code',
             'phone_number',
             'email',
             'birthday',
             'first_visit_date',
+            'client_type',
         )
         export_order = fields
 
 @admin.register(Client)
 class ClientAdmin(ImportExportModelAdmin):
     resource_class = ClientResource
-    list_display = ('id', 'full_name', 'phone_number', 'email', 'birthday', 'first_visit_date', 'created_at')
-    search_fields = ('full_name', 'phone_number', 'email')
+    list_display = ('id', 'full_name', 'area_code', 'phone_number', 'email', 'birthday', 'first_visit_date', 'created_at', 'client_type')
+    search_fields = ('full_name', 'phone_number', 'email', 'client_type')
+    list_filter = ('client_type', 'created_at')
+    ordering = ('-created_at',)

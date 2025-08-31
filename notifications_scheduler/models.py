@@ -111,8 +111,8 @@ class ClientScheduledMessage(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Client Message"
-        verbose_name_plural = "Client Messages"
+        verbose_name = "Client Scheduled Message"
+        verbose_name_plural = "Client Scheduled Messages"
         constraints = [
             models.UniqueConstraint(
                 fields=["scheduled_message", "client"],
@@ -138,3 +138,17 @@ class ClientScheduledMessage(models.Model):
             ]
             and self.retry_count < self.max_retries
         )
+
+class ImportErrorLog(models.Model):
+    line_number = models.IntegerField()
+    error_message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Error en línea {self.line_number}: {self.error_message[:50]}"
+    
+class ClientScheduledMessageImportErrorLog(ImportErrorLog):
+    client_scheduled_message = models.ForeignKey(ClientScheduledMessage, on_delete=models.CASCADE, related_name="import_errors")
+    
+    def __str__(self):
+        return f"Error en línea {self.line_number} para ClientScheduledMessage {self.client_scheduled_message.id}: {self.error_message[:50]}"

@@ -7,7 +7,7 @@ from import_export import fields, resources
 from import_export.widgets import DateWidget
 from datetime import datetime
 from import_export.results import RowResult
-from .models import Client
+from .models import Client, PhoneNumberClient
 
 
 class CustomDateWidget(DateWidget):
@@ -109,6 +109,30 @@ class ClientResource(resources.ModelResource):
         export_order = fields
 
 
+class PhoneNumberClientInline(admin.TabularInline):
+    model = PhoneNumberClient
+    extra = 0
+    fields = ('phone_number', 'area_code', 'is_primary', 'notes', 'created_at')
+    readonly_fields = ('created_at',)
+    show_change_link = True
+
+class HasPhoneNumberFilter(admin.SimpleListFilter):
+    title = '¿Tiene teléfonos?'
+    parameter_name = 'has_phone'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('yes', 'Sí'),
+            ('no', 'No'),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.filter(phone_numbers__isnull=False).distinct()
+        if self.value() == 'no':
+            return queryset.filter(phone_numbers__isnull=True)
+        return queryset 
+
 @admin.register(Client)
 class ClientAdmin(ImportExportModelAdmin):
     resource_class = ClientResource
@@ -117,6 +141,8 @@ class ClientAdmin(ImportExportModelAdmin):
         "full_name",
         "area_code",
         "phone_number",
+        "phone_format_error",
+        "primary_phone_match",
         "email",
         "birthday",
         "first_visit_date",
@@ -124,5 +150,14 @@ class ClientAdmin(ImportExportModelAdmin):
         "client_type",
     )
     search_fields = ("full_name", "phone_number", "email", "client_type")
-    list_filter = ("client_type", "created_at")
+    list_filter = ("client_type", "created_at", "phone_format_error", "primary_phone_match", HasPhoneNumberFilter,)
     ordering = ("-created_at",)
+    inlines = [PhoneNumberClientInline]
+
+
+@admin.register(PhoneNumberClient)
+class PhoneNumberClientAdmin(admin.ModelAdmin):
+    list_display = ('id', 'client__id', 'client', 'phone_number', 'area_code', 'is_primary', 'phone_format_error', 'notes', 'created_at')
+    search_fields = ('client__full_name', 'phone_number', 'area_code')
+    list_filter = ('is_primary', 'phone_format_error')
+    ordering = ('-created_at',)

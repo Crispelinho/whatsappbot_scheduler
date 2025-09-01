@@ -51,6 +51,13 @@ class ScheduledMessage(models.Model):
         blank=True,
         help_text="Optional image to send with the message"
     )
+    # image1 = models.ImageField(
+    #     "Optional Image 1",
+    #     upload_to="scheduled_messages/images/",
+    #     null=True,
+    #     blank=True,
+    #     help_text="Optional image to send with the message"
+    # )
     video = models.FileField(
         "Optional Video",
         upload_to="scheduled_messages/videos/",

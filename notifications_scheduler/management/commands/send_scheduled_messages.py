@@ -20,7 +20,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         now = timezone.now()
         scheduled_messages = ScheduledMessage.objects.filter(status="active", start_datetime__lte=now)
-
+        print(f"Found {scheduled_messages.count()} active scheduled messages to process.")
         for scheduled in scheduled_messages:
             batch_size = scheduled.recipient_count if scheduled.recipient_count > 0 else 50
             has_more = True
@@ -28,6 +28,8 @@ class Command(BaseCommand):
 
             while has_more:
                 pending_messages = ClientScheduledMessage.objects.filter(
+                    scheduled_message=scheduled
+                ).filter(
                     Q(response__status="pending") |
                     Q(response__status="failed", response__response_code__in=RETRYABLE_ERRORS)
                 )[offset:offset + batch_size]

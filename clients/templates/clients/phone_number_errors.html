@@ -18,8 +18,10 @@
 <form method="post">
     {% csrf_token %}
     <h3>Clientes con error</h3>
+    <input type="hidden" name="correction_type" value="clients">
     <table border="1">
         <tr>
+            <th></th>
             <th>ID</th>
             <th>Nombre</th>
             <th>Código área</th>
@@ -31,6 +33,7 @@
         </tr>
         {% for c in clients %}
         <tr>
+            <td><input type="checkbox" name="selected_clients" value="{{ c.id }}"></td>
             <td>{{ c.id }}</td>
             <td>{{ c.full_name }}</td>
             <td>{{ c.area_code }}</td>
@@ -46,9 +49,16 @@
         </tr>
         {% endfor %}
     </table>
+    <button type="submit" name="correction_type" value="clients">Aplicar corrección solo a clientes</button>
+</form>
+
+<form method="post">
+    {% csrf_token %}
     <h3>Teléfonos alternos con error</h3>
+    <input type="hidden" name="correction_type" value="phones">
     <table border="1">
         <tr>
+            <th></th>
             <th>ID</th>
             <th>Cliente</th>
             <th>Código área</th>
@@ -60,6 +70,7 @@
         </tr>
         {% for p in phones %}
         <tr>
+            <td><input type="checkbox" name="selected_phones" value="{{ p.id }}"></td>
             <td>{{ p.id }}</td>
             <td>{{ p.client.full_name }}</td>
             <td>{{ p.area_code }}</td>
@@ -75,7 +86,8 @@
         </tr>
         {% endfor %}
     </table>
-    <button type="submit">Aplicar corrección</button>
+</table>
+    <button type="submit" name="correction_type" value="phones">Aplicar corrección solo a teléfonos alternos</button>
 </form>
 {% if messages %}
 <ul class="messages">

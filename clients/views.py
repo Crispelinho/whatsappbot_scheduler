@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db import models
 
 from .models import Client, PhoneNumberClient, PhoneFormatError
-from .utils import get_strategy_and_correction
+from .utils import get_strategy_and_correction, split_and_clean_phones, get_area_code_for_number
 
 
 # Vista para errores de clientes
@@ -28,6 +28,14 @@ class PhoneNumberErrorClientsView(View):
             c.suggested_strategy = suggestion
             c.suggested_area = new_area
             c.suggested_phone = new_phone
+            n1, n2, n3 = split_and_clean_phones(c.phone_number)
+            c.suggested_phone_1 = n1 or ''
+            c.suggested_phone_2 = n2 or ''
+            c.suggested_phone_3 = n3 or ''
+            # Calcular códigos de área sugeridos para cada número
+            c.suggested_area_1 = get_area_code_for_number(n1) if n1 else ''
+            c.suggested_area_2 = get_area_code_for_number(n2) if n2 else ''
+            c.suggested_area_3 = get_area_code_for_number(n3) if n3 else ''
         return render(request, self.template_name, {
             'clients': clients_qs,
             'client_error_filter': client_error_filter,
@@ -40,14 +48,21 @@ class PhoneNumberErrorClientsView(View):
         updated = 0
         selected = request.POST.getlist('selected_clients')
         for client_id in selected:
-            area_key = f'client_area_{client_id}'
-            phone_key = f'client_phone_{client_id}'
-            area_value = request.POST.get(area_key, "")
-            phone_value = request.POST.get(phone_key, "")
+            # Leer todos los campos de área y teléfono
+            area1 = request.POST.get(f'client_area_{client_id}', "")
+            phone1 = request.POST.get(f'client_phone_{client_id}', "")
+            area2 = request.POST.get(f'client_area2_{client_id}', "")
+            phone2 = request.POST.get(f'client_phone2_{client_id}', "")
+            area3 = request.POST.get(f'client_area3_{client_id}', "")
+            phone3 = request.POST.get(f'client_phone3_{client_id}', "")
             try:
                 client = Client.objects.get(id=client_id)
-                client.phone_number = phone_value
-                client.area_code = area_value
+                client.phone_number = phone1
+                client.area_code = area1
+                client.second_phone_number = phone2
+                client.second_area_code = area2
+                client.third_phone_number = phone3
+                client.third_area_code = area3
                 client.save()
                 updated += 1
             except Client.DoesNotExist:
@@ -79,6 +94,10 @@ class PhoneNumberErrorPhonesView(View):
             p.suggested_strategy = suggestion
             p.suggested_area = new_area
             p.suggested_phone = new_phone
+            n1, n2, n3 = split_and_clean_phones(p.phone_number)
+            p.suggested_phone_1 = n1 or ''
+            p.suggested_phone_2 = n2 or ''
+            p.suggested_phone_3 = n3 or ''
         return render(request, self.template_name, {
             'phones': phones_qs,
             'phone_error_filter': phone_error_filter,

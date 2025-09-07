@@ -41,7 +41,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         options.add_argument("--disable-dev-shm-usage")
 
         driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager(driver_version="138.0.7204.158").install()),
+            service=Service(ChromeDriverManager().install()),
             options=options
         )
         driver.get("https://web.whatsapp.com")

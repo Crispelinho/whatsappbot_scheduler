@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Corrección de números con error</h2>
+
+<form method="get" style="margin-bottom: 1em;">
+    <label for="error">Filtrar por error:</label>
+    <select name="error" id="error">
+        <option value="">Todos</option>
+        {% for value, label in error_choices %}
+            <option value="{{ value }}" {% if error_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label for="search">Buscar:</label>
+    <input type="text" name="search" id="search" value="{{ search|default:'' }}" placeholder="Nombre o teléfono">
+    <button type="submit">Filtrar</button>
+</form>
+
+<form method="post">
+    {% csrf_token %}
+    <h3>Clientes con error</h3>
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Código área</th>
+            <th>Teléfono</th>
+            <th>Error</th>
+            <th>Estrategia sugerida</th>
+            <th>Nuevo código área</th>
+            <th>Nuevo valor</th>
+        </tr>
+        {% for c in clients %}
+        <tr>
+            <td>{{ c.id }}</td>
+            <td>{{ c.full_name }}</td>
+            <td>{{ c.area_code }}</td>
+            <td>{{ c.phone_number }}</td>
+            <td>{{ c.get_phone_format_error_display }}</td>
+            <td>{{ c.suggested_strategy }}</td>
+            <td><input type="text" name="client_area_{{ c.id }}" value="{{ c.suggested_area }}"></td>
+            <td><input type="text" name="client_phone_{{ c.id }}" value="{{ c.suggested_phone }}"></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">Sin errores en clientes</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <h3>Teléfonos alternos con error</h3>
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>Código área</th>
+            <th>Teléfono</th>
+            <th>Error</th>
+            <th>Estrategia sugerida</th>
+            <th>Nuevo código área</th>
+            <th>Nuevo valor</th>
+        </tr>
+        {% for p in phones %}
+        <tr>
+            <td>{{ p.id }}</td>
+            <td>{{ p.client.full_name }}</td>
+            <td>{{ p.area_code }}</td>
+            <td>{{ p.phone_number }}</td>
+            <td>{{ p.get_phone_format_error_display }}</td>
+            <td>{{ p.suggested_strategy }}</td>
+            <td><input type="text" name="phoneclient_area_{{ p.id }}" value="{{ p.suggested_area }}"></td>
+            <td><input type="text" name="phoneclient_phone_{{ p.id }}" value="{{ p.suggested_phone }}"></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">Sin errores en teléfonos alternos</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <button type="submit">Aplicar corrección</button>
+</form>
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
+        {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

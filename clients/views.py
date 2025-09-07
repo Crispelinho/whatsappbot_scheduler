@@ -91,29 +91,40 @@ class PhoneNumberErrorFixView(View):
         })
 
     def post(self, request):
-        # Corrección de clientes
-        for key, value in request.POST.items():
-            if key.startswith('client_phone_'):
-                client_id = key.replace('client_phone_', '')
+        correction_type = request.POST.get('correction_type')
+        updated = 0
+        if correction_type == 'clients':
+            selected = request.POST.getlist('selected_clients')
+            for client_id in selected:
                 area_key = f'client_area_{client_id}'
+                phone_key = f'client_phone_{client_id}'
                 area_value = request.POST.get(area_key, "")
+                phone_value = request.POST.get(phone_key, "")
                 try:
                     client = Client.objects.get(id=client_id)
-                    client.phone_number = value
+                    client.phone_number = phone_value
                     client.area_code = area_value
                     client.save()
+                    updated += 1
                 except Client.DoesNotExist:
                     pass
-            if key.startswith('phoneclient_phone_'):
-                phone_id = key.replace('phoneclient_phone_', '')
+            messages.success(request, f'Correcciones aplicadas a {updated} clientes seleccionados.')
+        elif correction_type == 'phones':
+            selected = request.POST.getlist('selected_phones')
+            for phone_id in selected:
                 area_key = f'phoneclient_area_{phone_id}'
+                phone_key = f'phoneclient_phone_{phone_id}'
                 area_value = request.POST.get(area_key, "")
+                phone_value = request.POST.get(phone_key, "")
                 try:
                     phone = PhoneNumberClient.objects.get(id=phone_id)
-                    phone.phone_number = value
+                    phone.phone_number = phone_value
                     phone.area_code = area_value
                     phone.save()
+                    updated += 1
                 except PhoneNumberClient.DoesNotExist:
                     pass
-        messages.success(request, 'Correcciones aplicadas.')
+            messages.success(request, f'Correcciones aplicadas a {updated} teléfonos alternos seleccionados.')
+        else:
+            messages.warning(request, 'No se especificó el tipo de corrección.')
         return redirect('clients:phone_number_errors')

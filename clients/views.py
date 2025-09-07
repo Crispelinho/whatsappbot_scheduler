@@ -7,25 +7,31 @@ from .models import Client, PhoneNumberClient, PhoneFormatError
 class PhoneNumberErrorFixView(View):
     template_name = 'clients/phone_number_errors.html'
 
+
     def get(self, request):
-        # Filtros
-        error_filter = request.GET.get('error')
-        search = request.GET.get('search', '').strip()
+        # Filtros independientes para clientes y teléfonos alternos
+        client_error_filter = request.GET.get('client_error')
+        client_search = request.GET.get('client_search', '').strip()
+        phone_error_filter = request.GET.get('phone_error')
+        phone_search = request.GET.get('phone_search', '').strip()
 
         clients_qs = Client.objects.exclude(phone_format_error=PhoneFormatError.VALID)
         phones_qs = PhoneNumberClient.objects.exclude(phone_format_error=PhoneFormatError.VALID)
 
-        if error_filter:
-            clients_qs = clients_qs.filter(phone_format_error=error_filter)
-            phones_qs = phones_qs.filter(phone_format_error=error_filter)
-        if search:
+        if client_error_filter:
+            clients_qs = clients_qs.filter(phone_format_error=client_error_filter)
+        if client_search:
             clients_qs = clients_qs.filter(
-                models.Q(full_name__icontains=search) |
-                models.Q(phone_number__icontains=search)
+                models.Q(full_name__icontains=client_search) |
+                models.Q(phone_number__icontains=client_search)
             )
+
+        if phone_error_filter:
+            phones_qs = phones_qs.filter(phone_format_error=phone_error_filter)
+        if phone_search:
             phones_qs = phones_qs.filter(
-                models.Q(phone_number__icontains=search) |
-                models.Q(client__full_name__icontains=search)
+                models.Q(phone_number__icontains=phone_search) |
+                models.Q(client__full_name__icontains=phone_search)
             )
 
         clients_with_errors = clients_qs
@@ -85,8 +91,10 @@ class PhoneNumberErrorFixView(View):
         return render(request, self.template_name, {
             'clients': clients_with_errors,
             'phones': phones_with_errors,
-            'error_filter': error_filter,
-            'search': search,
+            'client_error_filter': client_error_filter,
+            'client_search': client_search,
+            'phone_error_filter': phone_error_filter,
+            'phone_search': phone_search,
             'error_choices': PhoneFormatError.choices,
         })
 

@@ -93,7 +93,7 @@ class Client(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.full_name} ({self.area_code} {self.phone_number})"
+        return f"({self.id}) {self.full_name} ({self.area_code} {self.phone_number})"
 
 class PhoneNumberClient(models.Model):
     client = models.ForeignKey('Client', on_delete=models.CASCADE, related_name='phone_numbers')

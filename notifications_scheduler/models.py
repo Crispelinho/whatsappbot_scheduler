@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -67,6 +66,13 @@ class ScheduledMessage(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    client_type = models.CharField(
+        max_length=20,
+        choices=Client.ClientType.choices,
+        default=Client.ClientType.CONSOLIDATED,
+        blank=True,
+        help_text="Tipo de cliente al momento de enviar la notificación."
+    )
 
     class Meta:
         verbose_name = "Scheduled Message"

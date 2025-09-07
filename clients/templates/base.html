@@ -5,7 +5,13 @@
     <title>Corrección de números</title>
 </head>
 <body>
-    {% block content %}{% endblock %}
+    <nav style="background:#2a3b6e;padding:1em 2em;">
+        <a href="{% url 'clients:phone_number_errors_clients' %}" style="color:#fff;font-weight:bold;margin-right:2em;text-decoration:none;">Errores de Clientes</a>
+        <a href="{% url 'clients:phone_number_errors_phones' %}" style="color:#fff;font-weight:bold;text-decoration:none;">Errores de Teléfonos Alternos</a>
+    </nav>
+    <div style="max-width:1200px;margin:2em auto;">
+        {% block content %}{% endblock %}
+    </div>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

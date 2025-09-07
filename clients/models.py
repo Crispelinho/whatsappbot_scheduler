@@ -126,12 +126,12 @@ class PhoneNumberClient(models.Model):
         cleaned = "".join(filter(str.isdigit, phone_number))
         if not cleaned.isdigit():
             return PhoneFormatError.NOT_NUMERIC
+        if any(c for c in phone_number if not c.isdigit() and c not in ['+', ' '] ):
+            return PhoneFormatError.SPECIAL_CHARS
         if len(cleaned) > 10:
             return PhoneFormatError.TOO_LONG
         if len(cleaned) < 10:
             return PhoneFormatError.TOO_SHORT
-        if any(c for c in phone_number if not c.isdigit() and c not in ['+', ' '] ):
-            return PhoneFormatError.SPECIAL_CHARS
         return PhoneFormatError.VALID
 
     def check_primary_phone_match(self):

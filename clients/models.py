@@ -30,7 +30,10 @@ class Client(models.Model):
     original_area_code = models.CharField(max_length=10, blank=True, null=True, help_text="Código de área original para histórico.")
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     original_phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Valor original del número para histórico.")
+    second_area_code = models.CharField(max_length=5, blank=True, null=True)
     second_phone_number = models.CharField(max_length=20, blank=True, null=True)
+    third_area_code = models.CharField(max_length=5, blank=True, null=True)
+    third_phone_number = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     birthday = models.DateField(blank=True, null=True)
     first_visit_date = models.DateField(blank=True, null=True)
@@ -64,12 +67,12 @@ class Client(models.Model):
         cleaned = "".join(filter(str.isdigit, phone_number))
         if not cleaned.isdigit():
             return PhoneFormatError.NOT_NUMERIC
+        if any(c for c in phone_number if not c.isdigit() and c not in ['+', ' '] ):
+            return PhoneFormatError.SPECIAL_CHARS
         if len(cleaned) > 10:
             return PhoneFormatError.TOO_LONG
         if len(cleaned) < 10:
             return PhoneFormatError.TOO_SHORT
-        if any(c for c in phone_number if not c.isdigit() and c not in ['+', ' '] ):
-            return PhoneFormatError.SPECIAL_CHARS
         return PhoneFormatError.VALID
 
     def check_primary_phone_match(self):

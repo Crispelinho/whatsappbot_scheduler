@@ -40,7 +40,9 @@
             <th>Error</th>
             <th>Estrategia sugerida</th>
             <th>Nuevo código área</th>
-            <th>Nuevo valor</th>
+            <th>Nuevo valor 1</th>
+            <th>Nuevo valor 2</th>
+            <th>Nuevo valor 3</th>
         </tr>
         </thead>
         <tbody>
@@ -54,7 +56,9 @@
             <td>{{ p.get_phone_format_error_display }}</td>
             <td>{{ p.suggested_strategy }}</td>
             <td><input type="text" name="phoneclient_area_{{ p.id }}" value="{{ p.suggested_area }}"></td>
-            <td><input type="text" name="phoneclient_phone_{{ p.id }}" value="{{ p.suggested_phone }}"></td>
+            <td><input type="text" name="phoneclient_phone_{{ p.id }}" value="{{ p.suggested_phone_1 }}"></td>
+            <td><input type="text" name="phoneclient_phone2_{{ p.id }}" value="{{ p.suggested_phone_2 }}"></td>
+            <td><input type="text" name="phoneclient_phone3_{{ p.id }}" value="{{ p.suggested_phone_3 }}"></td>
         </tr>
         {% empty %}
         <tr>

@@ -39,8 +39,12 @@
             <th>Teléfono</th>
             <th>Error</th>
             <th>Estrategia sugerida</th>
-            <th>Nuevo código área</th>
-            <th>Nuevo valor</th>
+            <th>Nuevo código área 1</th>
+            <th>Nuevo valor 1</th>
+            <th>Nuevo código área 2</th>
+            <th>Nuevo valor 2</th>
+            <th>Nuevo código área 3</th>
+            <th>Nuevo valor 3</th>
         </tr>
         </thead>
         <tbody>
@@ -53,8 +57,12 @@
             <td>{{ c.phone_number }}</td>
             <td>{{ c.get_phone_format_error_display }}</td>
             <td>{{ c.suggested_strategy }}</td>
-            <td><input type="text" name="client_area_{{ c.id }}" value="{{ c.suggested_area }}"></td>
-            <td><input type="text" name="client_phone_{{ c.id }}" value="{{ c.suggested_phone }}"></td>
+            <td><input type="text" name="client_area_{{ c.id }}" value="{{ c.suggested_area_1 }}"></td>
+            <td><input type="text" name="client_phone_{{ c.id }}" value="{{ c.suggested_phone_1 }}"></td>
+            <td><input type="text" name="client_area2_{{ c.id }}" value="{{ c.suggested_area_2 }}"></td>
+            <td><input type="text" name="client_phone2_{{ c.id }}" value="{{ c.suggested_phone_2 }}"></td>
+            <td><input type="text" name="client_area3_{{ c.id }}" value="{{ c.suggested_area_3 }}"></td>
+            <td><input type="text" name="client_phone3_{{ c.id }}" value="{{ c.suggested_phone_3 }}"></td>
         </tr>
         {% empty %}
         <tr>

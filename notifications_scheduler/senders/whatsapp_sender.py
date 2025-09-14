@@ -12,8 +12,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.remote.webelement import WebElement
 
-from notifications_scheduler.constants import xpaths
+
+from notifications_scheduler.constants import chrome, times, xpaths
 from notifications_scheduler.models import ResponseCode
 from notifications_scheduler.senders.base import MessageSendResult, SocialNetworkSenderInterface
 
@@ -31,33 +33,42 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         if WhatsAppSeleniumSender._driver:
             return WhatsAppSeleniumSender._driver
 
-        chrome_user_data = os.path.join(os.getcwd(), "chrome_selenium_profile")
+        driver = self._create_driver_with_profile()
+        self._open_whatsapp_and_wait(driver)
+        WhatsAppSeleniumSender._driver = driver
+        return driver
+
+    def _create_driver_with_profile(self) -> webdriver.Chrome:
+        """Crea un ChromeDriver con perfil persistente."""
+        chrome_user_data = os.path.join(os.getcwd(), chrome.CHROME_PROFILE_DIR)
         os.makedirs(chrome_user_data, exist_ok=True)
 
+        return webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=self._build_chrome_options(chrome_user_data)
+        )
+    
+    def _build_chrome_options(self, chrome_user_data: str, profile: str = chrome.CHROME_PROFILE_NAME) -> Options:
+        """Construye las opciones de ChromeDriver con perfil persistente."""
         options = Options()
         options.add_argument(f"--user-data-dir={chrome_user_data}")
-        options.add_argument("--profile-directory=Default")
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument(f"--profile-directory={profile}")
+        
+        for arg in chrome.CHROME_COMMON_OPTIONS:
+            options.add_argument(arg)
 
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()),
-            options=options
-        )
+        return options
+    
+    def _open_whatsapp_and_wait(self, driver: webdriver.Chrome, timeout: int = 300):
+        """Abre WhatsApp Web y espera a que cargue la caja de texto."""
         driver.get("https://web.whatsapp.com")
-
         try:
-            WebDriverWait(driver, 300).until(
+            WebDriverWait(driver, timeout).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='textbox']"))
             )
         except Exception as e:
             driver.quit()
             raise RuntimeError(f"Could not log in to WhatsApp Web: {e}")
-
-        WhatsAppSeleniumSender._driver = driver
-        return driver
 
     def _debug_log(self, selector: str, error: Exception | None = None) -> str:
         """
@@ -81,7 +92,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             msg += f" | Exception: {error}"
         return msg
 
-    def _wait_for_element(self, by, selector, timeout=20) -> tuple[bool, any]:
+    def _wait_for_element(self, by, selector, timeout=20) -> tuple[bool, WebElement, str| None]:
         """
         Espera a que un elemento esté presente y retornarlo.
         Retorna (success, element_or_error_message)
@@ -90,36 +101,60 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             element = WebDriverWait(self.driver, timeout).until(
                 EC.presence_of_element_located((by, selector))
             )
-            return True, element
+            return True, element, None
         except (TimeoutException, NoSuchElementException) as e:
-            return False, self._debug_log(selector, e)
+            return False, None, self._debug_log(selector, e)
+        
+    def _find_button_and_click(self, by, selector, timeout=20) -> tuple[bool, MessageSendResult]:
+        """
+        Encuentra un botón y hace click.
+        Retorna (success, error_message_if_any)
+        """
+        success, element_btn, error_msg = self._wait_for_element(by, selector, timeout)
+        if not success:
+            return False, MessageSendResult(
+                success=False,
+                error_code=ResponseCode.TIMEOUT.value,
+                message=error_msg
+            )
+        element_btn.click()
+        return True, None
+    
+    def _upload_file(self, file_path: str) -> tuple[bool, MessageSendResult]:
+        """Carga un archivo en el input de archivos."""
+        try:
+            input_file = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, xpaths.FILE_INPUT))
+            )
+            input_file.send_keys(file_path)
+            return True, None
+        except Exception as e:
+            return False, MessageSendResult(
+                success=False,
+                error_code=ResponseCode.EXCEPTION.value,
+                message=str(e)
+            )
 
     def _attach_and_send_file(self, file_path: str) -> tuple[bool, MessageSendResult]:
-        """Adjunta archivo (imagen o video) y lo envía."""
-        print(f"Attaching and sending file: {file_path}")
-        success, attach_btn = self._wait_for_element(By.XPATH, xpaths.ATTACH_BUTTON, 20)
-        if not success:
-            return False, MessageSendResult(success=False, error_code=ResponseCode.TIMEOUT.value, message=attach_btn)
-
-        attach_btn.click()
-        time.sleep(1)
-
-        print("Looking for file input...")
-        try:
-            input_file = self.driver.find_element(By.XPATH, xpaths.FILE_INPUT)
-            input_file.send_keys(file_path)
-            time.sleep(3)
-        except Exception as e:
-            return False, MessageSendResult(success=False, error_code=ResponseCode.EXCEPTION.value, message=str(e))
+        """Adjunta un archivo (imagen o video) y lo envía."""
         
-        print("File attached, looking for send button...")
-        success, send_btn = self._wait_for_element(By.XPATH, xpaths.SEND_BUTTON, 10)
-        if not success:
-            return False, MessageSendResult(success=False, error_code=ResponseCode.TIMEOUT.value, message=send_btn)
+        # Paso 1: Buscar botón de adjuntar y hacer click
+        success_btn_attach_click, msg_send_result = self._find_button_and_click(By.XPATH, xpaths.ATTACH_BUTTON, times.DEFAULT_TIMEOUT)
+        if not success_btn_attach_click:
+            return False, msg_send_result
 
-        send_btn.click()
-        time.sleep(5)
+        # Paso 2: Cargar archivo en input de archivos
+        success_file_upload, msg_send_result = self._upload_file(file_path)
+        if not success_file_upload:
+            return False, msg_send_result
+
+        # Paso 3: Esperar botón de enviar y hacer click
+        success_btn_send_click, msg_send_result = self._find_button_and_click(By.XPATH, xpaths.SEND_BUTTON, times.DEFAULT_TIMEOUT)
+        if not success_btn_send_click:
+            return False, msg_send_result
+
         return True, None
+
 
     def _is_invalid_number(self) -> bool:
         """Detecta si el número no está en WhatsApp."""

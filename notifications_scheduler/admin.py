@@ -97,9 +97,9 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
 
 @admin.register(MessageResponse)
 class MessageResponseAdmin(ImportExportModelAdmin):
-    list_display = ('id', 'client_message__client', 'status', 'response_code', 'description', 'created_at')
-    list_filter = ('status', 'response_code')
-    search_fields = ('client_message__client__full_name', 'client_message__client__phone_number')
+    list_display = ('id', 'client_message__scheduled_message', 'client_message__client', 'status', 'response_code', 'description', 'created_at')
+    list_filter = ('status', 'response_code', 'client_message__scheduled_message')
+    search_fields = ('client_message__scheduled_message', 'client_message__client__full_name', 'client_message__client__phone_number')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
 

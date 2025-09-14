@@ -98,6 +98,9 @@ class PhoneNumberErrorPhonesView(View):
             p.suggested_phone_1 = n1 or ''
             p.suggested_phone_2 = n2 or ''
             p.suggested_phone_3 = n3 or ''
+            p.suggested_area_1 = get_area_code_for_number(n1) if n1 else ''
+            p.suggested_area_2 = get_area_code_for_number(n2) if n2 else ''
+            p.suggested_area_3 = get_area_code_for_number(n3) if n3 else ''
         return render(request, self.template_name, {
             'phones': phones_qs,
             'phone_error_filter': phone_error_filter,
@@ -110,18 +113,41 @@ class PhoneNumberErrorPhonesView(View):
         updated = 0
         selected = request.POST.getlist('selected_phones')
         for phone_id in selected:
-            area_key = f'phoneclient_area_{phone_id}'
-            phone_key = f'phoneclient_phone_{phone_id}'
-            area_value = request.POST.get(area_key, "")
-            phone_value = request.POST.get(phone_key, "")
+            # Obtener el registro original para saber el cliente
             try:
-                phone = PhoneNumberClient.objects.get(id=phone_id)
-                phone.phone_number = phone_value
-                phone.area_code = area_value
-                phone.save()
-                updated += 1
+                phone_obj = PhoneNumberClient.objects.get(id=phone_id)
             except PhoneNumberClient.DoesNotExist:
-                pass
+                continue
+            client = phone_obj.client
+            # Leer todos los campos de área y teléfono
+            area1 = request.POST.get(f'phoneclient_area_{phone_id}', "")
+            phone1 = request.POST.get(f'phoneclient_phone_{phone_id}', "")
+            area2 = request.POST.get(f'phoneclient_area2_{phone_id}', "")
+            phone2 = request.POST.get(f'phoneclient_phone2_{phone_id}', "")
+            area3 = request.POST.get(f'phoneclient_area3_{phone_id}', "")
+            phone3 = request.POST.get(f'phoneclient_phone3_{phone_id}', "")
+            # Guardar/actualizar hasta 3 registros para este cliente y estos valores
+            values = [
+                (area1, phone1),
+                (area2, phone2),
+                (area3, phone3),
+            ]
+            # Eliminar el registro original (si el número ya no está en la lista)
+            original_numbers = {p for a, p in values if p}
+            # Actualizar o crear los registros
+            for idx, (area, phone) in enumerate(values):
+                if phone:
+                    _, _ = PhoneNumberClient.objects.update_or_create(
+                        client=client,
+                        phone_number=phone,
+                        defaults={
+                            'area_code': area,
+                            'is_primary': idx == 0,
+                        }
+                    )
+                    updated += 1
+            # Eliminar registros antiguos que ya no están en la lista
+            PhoneNumberClient.objects.filter(client=client).exclude(phone_number__in=original_numbers).delete()
         if updated:
             messages.success(request, f'Correcciones aplicadas a {updated} teléfonos alternos seleccionados.')
         else:

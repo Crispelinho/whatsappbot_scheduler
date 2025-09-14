@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import time
 import pyperclip
@@ -9,9 +10,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 
+from notifications_scheduler.constants import xpaths
 from notifications_scheduler.models import ResponseCode
 from notifications_scheduler.senders.base import MessageSendResult, SocialNetworkSenderInterface
 
@@ -57,6 +59,28 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         WhatsAppSeleniumSender._driver = driver
         return driver
 
+    def _debug_log(self, selector: str, error: Exception | None = None) -> str:
+        """
+        Guarda HTML y screenshot de la página en carpeta debug/
+        Retorna mensaje con rutas de debug.
+        """
+        os.makedirs("debug", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        html_path = f"debug/failed_{timestamp}.html"
+        img_path = f"debug/failed_{timestamp}.png"
+
+        try:
+            with open(html_path, "w", encoding="utf-8") as f:
+                f.write(self.driver.page_source)
+            self.driver.save_screenshot(img_path)
+        except Exception as e:
+            return f"Error al guardar debug: {e}"
+
+        msg = f"Timeout esperando: {selector}. Debug: {html_path}, {img_path}"
+        if error:
+            msg += f" | Exception: {error}"
+        return msg
+
     def _wait_for_element(self, by, selector, timeout=20) -> tuple[bool, any]:
         """
         Espera a que un elemento esté presente y retornarlo.
@@ -67,35 +91,35 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
                 EC.presence_of_element_located((by, selector))
             )
             return True, element
-        except TimeoutException:
-            return False, f"Timeout waiting for element: {selector}"
+        except (TimeoutException, NoSuchElementException) as e:
+            return False, self._debug_log(selector, e)
 
     def _attach_and_send_file(self, file_path: str) -> tuple[bool, MessageSendResult]:
         """Adjunta archivo (imagen o video) y lo envía."""
-        success, attach_btn = self._wait_for_element(By.XPATH, "//button[@title='Adjuntar']", 20)
+        print(f"Attaching and sending file: {file_path}")
+        success, attach_btn = self._wait_for_element(By.XPATH, xpaths.ATTACH_BUTTON, 20)
         if not success:
             return False, MessageSendResult(success=False, error_code=ResponseCode.TIMEOUT.value, message=attach_btn)
 
         attach_btn.click()
         time.sleep(1)
 
+        print("Looking for file input...")
         try:
-            input_file = self.driver.find_element(
-                By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'
-            )
+            input_file = self.driver.find_element(By.XPATH, xpaths.FILE_INPUT)
             input_file.send_keys(file_path)
             time.sleep(3)
         except Exception as e:
             return False, MessageSendResult(success=False, error_code=ResponseCode.EXCEPTION.value, message=str(e))
-
-        success, send_btn = self._wait_for_element(By.XPATH, '//div[@aria-label="Enviar"]', 10)
+        
+        print("File attached, looking for send button...")
+        success, send_btn = self._wait_for_element(By.XPATH, xpaths.SEND_BUTTON, 10)
         if not success:
             return False, MessageSendResult(success=False, error_code=ResponseCode.TIMEOUT.value, message=send_btn)
 
         send_btn.click()
         time.sleep(5)
         return True, None
-
 
     def _is_invalid_number(self) -> bool:
         """Detecta si el número no está en WhatsApp."""
@@ -196,12 +220,12 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             return MessageSendResult(
                 success=False,
                 error_code=ResponseCode.TIMEOUT.value,
-                message="Timeout waiting for WhatsApp Web to load chat"
+                message=self._debug_log("send_message_chat_load", TimeoutException())
             )
 
         except Exception as e:
             return MessageSendResult(
                 success=False,
                 error_code=ResponseCode.EXCEPTION.value,
-                message=str(e)
+                message=self._debug_log("send_message_exception", e)
             )

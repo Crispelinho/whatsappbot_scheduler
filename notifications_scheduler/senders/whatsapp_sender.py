@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 import time
+import traceback
 import pyperclip
 
 from selenium import webdriver
@@ -15,7 +16,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.remote.webelement import WebElement
 
 
-from notifications_scheduler.constants import chrome, times, xpaths
+from notifications_scheduler.constants import chrome, times, xpaths, whatsapp
 from notifications_scheduler.models import ResponseCode
 from notifications_scheduler.senders.base import MessageSendResult, SocialNetworkSenderInterface
 
@@ -26,6 +27,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
     _driver = None
 
     def __init__(self):
+        """Inicializa el sender y el driver de Selenium."""
         self.driver = self._get_or_create_driver()
 
     def _get_or_create_driver(self):
@@ -61,7 +63,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
     
     def _open_whatsapp_and_wait(self, driver: webdriver.Chrome, timeout: int = 300):
         """Abre WhatsApp Web y espera a que cargue la caja de texto."""
-        driver.get("https://web.whatsapp.com")
+        driver.get(whatsapp.URL_WHATSAPP_WEB)
         try:
             WebDriverWait(driver, timeout).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='textbox']"))
@@ -70,26 +72,30 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             driver.quit()
             raise RuntimeError(f"Could not log in to WhatsApp Web: {e}")
 
-    def _debug_log(self, selector: str, error: Exception | None = None) -> str:
+    def _debug_log(self, context: str, error: Exception | None = None, selector: str = None) -> str:
         """
-        Guarda HTML y screenshot de la página en carpeta debug/
-        Retorna mensaje con rutas de debug.
+        Guarda HTML y screenshot en carpeta debug/ y retorna un log con rutas.
+        context: Descripción breve del punto donde falló (ej: 'chat_load', 'file_upload')
         """
         os.makedirs("debug", exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        html_path = f"debug/failed_{timestamp}.html"
-        img_path = f"debug/failed_{timestamp}.png"
+        html_path = f"debug/{context}_{timestamp}.html"
+        img_path = f"debug/{context}_{timestamp}.png"
 
         try:
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(self.driver.page_source)
             self.driver.save_screenshot(img_path)
         except Exception as e:
-            return f"Error al guardar debug: {e}"
+            return f"[DEBUG_LOG_ERROR] No se pudo guardar debug para {context}: {e}"
 
-        msg = f"Timeout esperando: {selector}. Debug: {html_path}, {img_path}"
+
+        msg = f"[DEBUG] Context: {context}"
+        if selector:
+            msg += f" | Selector: {selector}"
+        msg += f" | HTML: {html_path} | Screenshot: {img_path}"
         if error:
-            msg += f" | Exception: {error}"
+            msg += f" | Exception: {repr(error)}\n{traceback.format_exc()}"
         return msg
 
     def _wait_for_element(self, by, selector, timeout=20) -> tuple[bool, WebElement, str| None]:
@@ -103,7 +109,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             )
             return True, element, None
         except (TimeoutException, NoSuchElementException) as e:
-            return False, None, self._debug_log(selector, e)
+            return False, None, self._debug_log("wait_for_element", e, selector)
         
     def _find_button_and_click(self, by, selector, timeout=20) -> tuple[bool, MessageSendResult]:
         """
@@ -128,11 +134,11 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             )
             input_file.send_keys(file_path)
             return True, None
-        except Exception as e:
+        except Exception:
             return False, MessageSendResult(
                 success=False,
                 error_code=ResponseCode.EXCEPTION.value,
-                message=str(e)
+                message=self._debug_log("file_upload", Exception("Error uploading file"))
             )
 
     def _attach_and_send_file(self, file_path: str) -> tuple[bool, MessageSendResult]:
@@ -143,27 +149,44 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         if not success_btn_attach_click:
             return False, msg_send_result
 
+        time.sleep(1)
+
         # Paso 2: Cargar archivo en input de archivos
         success_file_upload, msg_send_result = self._upload_file(file_path)
         if not success_file_upload:
             return False, msg_send_result
 
+        time.sleep(3)
+
         # Paso 3: Esperar botón de enviar y hacer click
         success_btn_send_click, msg_send_result = self._find_button_and_click(By.XPATH, xpaths.SEND_BUTTON, times.DEFAULT_TIMEOUT)
         if not success_btn_send_click:
             return False, msg_send_result
+        
+        time.sleep(1)
 
         return True, None
 
+    def _check_invalid_number(self, timeout: int = 5) -> MessageSendResult | None:
+        """Detecta si el número no está en WhatsApp o es inválido."""
+        selectors = {
+            ResponseCode.NOT_FOUND_IN_WHATSAPP: '//div[contains(text(),"no está en WhatsApp")]',
+            ResponseCode.INVALID_NUMBER: '//div[contains(text(),"no es válido")]',
+        }
+        for code, xpath in selectors.items():
+            try:
+                element = WebDriverWait(self.driver, timeout).until(
+                    EC.presence_of_element_located((By.XPATH, xpath))
+                )
+                return MessageSendResult(
+                        success=False,
+                        error_code=code.value,
+                        message=self._debug_log("invalid_number_check", Exception(element.text if element else None))
+                    )
+            except TimeoutException:
+                continue
+        return None
 
-    def _is_invalid_number(self) -> bool:
-        """Detecta si el número no está en WhatsApp."""
-        try:
-            self.driver.find_element(By.XPATH, '//div[contains(text(),"no está en WhatsApp")]')
-            return True
-        except:
-            return False  
-    
     def _write_message(self, message: str) -> bool:
         """Escribe y envía un mensaje en el chat. Retorna True si se pudo escribir."""
         boxes = self.driver.find_elements(By.XPATH, '//div[@contenteditable="true"]')
@@ -188,16 +211,12 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         Envía mensaje por WhatsApp Web.
         Retorna un MessageSendResult con estado, error y mensaje.
         """
-        # Asegurarse de que el driver esté inicializado
-        if not self.driver:
-            self.driver = self._get_or_create_driver()
-        
         # Validar número de teléfono
         if not phone_number:
             return MessageSendResult(
                 success=False,
                 error_code=ResponseCode.INVALID_NUMBER.value,
-                message="Phone number is required"
+                message=self._debug_log("empty_phone_number", Exception("Phone number is empty"))
             )
         
         # Verificar que el número comience con '+'
@@ -213,7 +232,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             return MessageSendResult(
                 success=False,
                 error_code=ResponseCode.WHATSAPP_DOWN.value,
-                message="WhatsApp Web is not reachable"
+                message=self._debug_log("whatsapp_web_not_loaded", Exception("WhatsApp Web is not loaded"))
             )
         
         try:
@@ -223,13 +242,10 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             )
             time.sleep(1.5)
 
-            # Verificar número inválido
-            if self._is_invalid_number():
-                return MessageSendResult(
-                    success=False,
-                    error_code=ResponseCode.INVALID_NUMBER.value,
-                    message="Number not on WhatsApp"
-                )
+            # Verificar número inválido o no registrado en WhatsApp
+            message_send_result = self._check_invalid_number()
+            if message_send_result != None:
+                return message_send_result
 
             # Enviar mensaje si hay texto
             if message:
@@ -238,7 +254,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
                     return MessageSendResult(
                         success=False,
                         error_code=ResponseCode.NO_INPUT_BOX.value,
-                        message="Input box not found"
+                        message=self._debug_log("no_input_box", Exception("Could not find input box"))
                     )
             message_sucess_send_result = "Message sent successfully"
             # Adjuntar archivos si existen
@@ -255,7 +271,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             return MessageSendResult(
                 success=False,
                 error_code=ResponseCode.TIMEOUT.value,
-                message=self._debug_log("send_message_chat_load", TimeoutException())
+                message=self._debug_log("send_message_chat_load", TimeoutException("Chat did not load in time"))
             )
 
         except Exception as e:

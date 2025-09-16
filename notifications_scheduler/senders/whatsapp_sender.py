@@ -24,20 +24,28 @@ from notifications_scheduler.senders.base import MessageSendResult, SocialNetwor
 class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
     """Sender que utiliza Selenium para enviar mensajes por WhatsApp Web."""
     
-    _driver = None
+    _driver = None # Driver compartido entre instancias si use_shared_driver es True
 
-    def __init__(self):
-        """Inicializa el sender y el driver de Selenium."""
+    def __init__(self, use_shared_driver: bool = True):       
+        """
+        Inicializa el sender.
+        :param use_shared_driver: Si True, reutiliza un driver global compartido.
+                                  Si False, crea un driver propio (útil en tests o workers múltiples).
+        """
+        self.use_shared_driver = use_shared_driver
         self.driver = self._get_or_create_driver()
 
-    def _get_or_create_driver(self):
+    def _get_or_create_driver(self)-> webdriver.Chrome:
         """Obtiene o inicializa el driver de Selenium con perfil persistente."""
-        if WhatsAppSeleniumSender._driver:
-            return WhatsAppSeleniumSender._driver
+        if self.use_shared_driver:
+            if WhatsAppSeleniumSender._driver:
+                return WhatsAppSeleniumSender._driver
 
         driver = self._create_driver_with_profile()
         self._open_whatsapp_and_wait(driver)
-        WhatsAppSeleniumSender._driver = driver
+
+        if self.use_shared_driver:
+            WhatsAppSeleniumSender._driver = driver
         return driver
 
     def _create_driver_with_profile(self) -> webdriver.Chrome:

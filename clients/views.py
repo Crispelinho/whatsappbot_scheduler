@@ -54,57 +54,57 @@ def enrich_phone_with_corrections(phone_obj: PhoneNumberClient):
 class PhoneNumberErrorClientsView(View):
     template_name = 'clients/phone_number_errors_clients.html'
 
-    def get(self, request):
-        client_error_filter = request.GET.get('client_error')
-        client_search = request.GET.get('client_search', '').strip()
-        clients_qs = Client.objects.exclude(phone_format_error=PhoneFormatError.VALID)
-        if client_error_filter:
-            clients_qs = clients_qs.filter(phone_format_error=client_error_filter)
-        if client_search:
-            clients_qs = clients_qs.filter(
-                models.Q(full_name__icontains=client_search) |
-                models.Q(phone_number__icontains=client_search)
-            )
-        for client in clients_qs:
-            enrich_client_with_corrections(client)
-            print("Sugerencia", client.suggested_strategy_1, "Phone 1", client.suggested_phone_1, "Area 1",client.suggested_area_1)
+def get(self, request):
+    client_error_filter = request.GET.get('client_error')
+    client_search = request.GET.get('client_search', '').strip()
+    clients_qs = Client.objects.exclude(phone_format_error=PhoneFormatError.VALID)
+    if client_error_filter:
+        clients_qs = clients_qs.filter(phone_format_error=client_error_filter)
+    if client_search:
+        clients_qs = clients_qs.filter(
+            models.Q(full_name__icontains=client_search) |
+            models.Q(phone_number__icontains=client_search)
+        )
+    for client in clients_qs:
+        enrich_client_with_corrections(client)
+        print("Sugerencia", client.suggested_strategy_1, "Phone 1", client.suggested_phone_1, "Area 1",client.suggested_area_1)
 
-        return render(request, self.template_name, {
-            'clients': clients_qs,
-            'client_error_filter': client_error_filter,
-            'client_search': client_search,
-            'error_choices': PhoneFormatError.choices,
-            'total_clients': clients_qs.count(),
-        })
+    return render(request, self.template_name, {
+        'clients': clients_qs,
+        'client_error_filter': client_error_filter,
+        'client_search': client_search,
+        'error_choices': PhoneFormatError.choices,
+        'total_clients': clients_qs.count(),
+    })
 
-    def post(self, request):
-        updated = 0
-        selected = request.POST.getlist('selected_clients')
-        for client_id in selected:
-            # Leer todos los campos de área y teléfono
-            area1 = request.POST.get(f'client_area_{client_id}', "")
-            phone1 = request.POST.get(f'client_phone_{client_id}', "")
-            area2 = request.POST.get(f'client_area2_{client_id}', "")
-            phone2 = request.POST.get(f'client_phone2_{client_id}', "")
-            area3 = request.POST.get(f'client_area3_{client_id}', "")
-            phone3 = request.POST.get(f'client_phone3_{client_id}', "")
-            try:
-                client = Client.objects.get(id=client_id)
-                client.phone_number = phone1
-                client.area_code = area1
-                client.second_phone_number = phone2
-                client.second_area_code = area2
-                client.third_phone_number = phone3
-                client.third_area_code = area3
-                client.save()
-                updated += 1
-            except Client.DoesNotExist:
-                pass
-        if updated:
-            messages.success(request, f'Correcciones aplicadas a {updated} clientes seleccionados.')
-        else:
-            messages.warning(request, 'No se seleccionó ningún cliente para corregir.')
-        return redirect('clients:phone_number_errors_clients')
+def post(self, request):
+    updated = 0
+    selected = request.POST.getlist('selected_clients')
+    for client_id in selected:
+        # Leer todos los campos de área y teléfono
+        area1 = request.POST.get(f'client_area_{client_id}', "")
+        phone1 = request.POST.get(f'client_phone_{client_id}', "")
+        area2 = request.POST.get(f'client_area2_{client_id}', "")
+        phone2 = request.POST.get(f'client_phone2_{client_id}', "")
+        area3 = request.POST.get(f'client_area3_{client_id}', "")
+        phone3 = request.POST.get(f'client_phone3_{client_id}', "")
+        try:
+            client = Client.objects.get(id=client_id)
+            client.phone_number = phone1
+            client.area_code = area1
+            client.second_phone_number = phone2
+            client.second_area_code = area2
+            client.third_phone_number = phone3
+            client.third_area_code = area3
+            client.save()
+            updated += 1
+        except Client.DoesNotExist:
+            pass
+    if updated:
+        messages.success(request, f'Correcciones aplicadas a {updated} clientes seleccionados.')
+    else:
+        messages.warning(request, 'No se seleccionó ningún cliente para corregir.')
+    return redirect('clients:phone_number_errors_clients')
 
 # Vista para errores de teléfonos alternos
 class PhoneNumberErrorPhonesView(View):

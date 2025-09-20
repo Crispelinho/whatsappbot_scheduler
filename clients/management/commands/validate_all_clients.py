@@ -10,7 +10,7 @@ class Command(BaseCommand):
         inconsistent_clients = []
         inconsistent_phones = []
         for client in Client.objects.all():
-            format_error = Client.validate_phone_format(client.phone_number)
+            format_error = Client.validate_phone_format(client.phone_number, client.area_code)
             is_match = client.check_primary_phone_match()
             client.phone_format_error = format_error
             client.primary_phone_match = is_match

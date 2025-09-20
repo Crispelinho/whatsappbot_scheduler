@@ -7,10 +7,52 @@ from .models import Client, PhoneNumberClient, PhoneFormatError
 from .utils import get_strategy_and_correction, split_and_clean_phones, get_area_code_for_number
 
 
+def enrich_client_with_corrections(client: Client):
+    corrections = get_strategy_and_correction(client.phone_number, client.area_code) or []
+
+    # Asegurar al menos 3 elementos
+    while len(corrections) < 3:
+        corrections.append(("Sin número", '', ''))
+
+    # Corrección principal
+    client.suggested_strategy = corrections[0][0]
+    client.suggested_area = corrections[0][1]
+    client.suggested_phone = corrections[0][2]
+
+    # Correcciones individuales
+    for i in range(3):
+        setattr(client, f'suggested_strategy_{i+1}', corrections[i][0])
+        setattr(client, f'suggested_phone_{i+1}', corrections[i][1] or '')
+        setattr(client, f'suggested_area_{i+1}', corrections[i][2] or '')
+
+    # Actualizar tipo de error desde estrategia aplicada
+    # client.phone_format_error = Client.validate_phone_format(client.phone_number, client.area_code)
+
+def enrich_phone_with_corrections(phone_obj: PhoneNumberClient):
+    """
+    Enriquecer un PhoneNumberClient con sugerencias de corrección,
+    asegurando al menos 3 alternativas.
+    """
+    corrections = get_strategy_and_correction(phone_obj.phone_number, phone_obj.area_code) or []
+
+    # Asegurar mínimo 3
+    while len(corrections) < 3:
+        corrections.append(("Sin número", "", ""))
+
+    # Corrección principal
+    phone_obj.suggested_strategy = corrections[0][0]
+    phone_obj.suggested_area = corrections[0][1]
+    phone_obj.suggested_phone = corrections[0][2]
+
+    # Correcciones individuales
+    for i in range(3):
+        setattr(phone_obj, f'suggested_strategy_{i+1}', corrections[i][0])
+        setattr(phone_obj, f'suggested_area_{i+1}', corrections[i][1] or "")
+        setattr(phone_obj, f'suggested_phone_{i+1}', corrections[i][2] or "")
+
 # Vista para errores de clientes
 class PhoneNumberErrorClientsView(View):
     template_name = 'clients/phone_number_errors_clients.html'
-
 
     def get(self, request):
         client_error_filter = request.GET.get('client_error')
@@ -23,19 +65,10 @@ class PhoneNumberErrorClientsView(View):
                 models.Q(full_name__icontains=client_search) |
                 models.Q(phone_number__icontains=client_search)
             )
-        for c in clients_qs:
-            suggestion, new_area, new_phone = get_strategy_and_correction(c.phone_number, c.area_code)
-            c.suggested_strategy = suggestion
-            c.suggested_area = new_area
-            c.suggested_phone = new_phone
-            n1, n2, n3 = split_and_clean_phones(c.phone_number)
-            c.suggested_phone_1 = n1 or ''
-            c.suggested_phone_2 = n2 or ''
-            c.suggested_phone_3 = n3 or ''
-            # Calcular códigos de área sugeridos para cada número
-            c.suggested_area_1 = get_area_code_for_number(n1) if n1 else ''
-            c.suggested_area_2 = get_area_code_for_number(n2) if n2 else ''
-            c.suggested_area_3 = get_area_code_for_number(n3) if n3 else ''
+        for client in clients_qs:
+            enrich_client_with_corrections(client)
+            print("Sugerencia", client.suggested_strategy_1, "Phone 1", client.suggested_phone_1, "Area 1",client.suggested_area_1)
+
         return render(request, self.template_name, {
             'clients': clients_qs,
             'client_error_filter': client_error_filter,
@@ -89,18 +122,9 @@ class PhoneNumberErrorPhonesView(View):
                 models.Q(phone_number__icontains=phone_search) |
                 models.Q(client__full_name__icontains=phone_search)
             )
-        for p in phones_qs:
-            suggestion, new_area, new_phone = get_strategy_and_correction(p.phone_number, p.area_code)
-            p.suggested_strategy = suggestion
-            p.suggested_area = new_area
-            p.suggested_phone = new_phone
-            n1, n2, n3 = split_and_clean_phones(p.phone_number)
-            p.suggested_phone_1 = n1 or ''
-            p.suggested_phone_2 = n2 or ''
-            p.suggested_phone_3 = n3 or ''
-            p.suggested_area_1 = get_area_code_for_number(n1) if n1 else ''
-            p.suggested_area_2 = get_area_code_for_number(n2) if n2 else ''
-            p.suggested_area_3 = get_area_code_for_number(n3) if n3 else ''
+        for phone_obj in phones_qs:
+            enrich_phone_with_corrections(phone_obj)
+            
         return render(request, self.template_name, {
             'phones': phones_qs,
             'phone_error_filter': phone_error_filter,

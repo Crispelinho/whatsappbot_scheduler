@@ -1,0 +1,44 @@
+<!-- templates/base.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+
+    <!-- Librerías externas -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    {% block extra_head %}{% endblock %}
+    
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+
+<body>
+    <div class="sidebar">
+        <h2 style="margin-bottom:2em;">📊 Dashboard</h2>
+        <a href="{% url 'clients:phone_number_errors_clients' %}">Errores de Clientes</a>
+        <a href="{% url 'clients:phone_number_errors_phones' %}">Errores de Teléfonos Alternos</a>
+        <a href="{% url 'sales:sale_pre_import' %}"
+            class="{% if request.resolver_match.url_name == 'sale_pre_import' %}active{% endif %}">
+            Importar Ventas 2025
+        </a>
+
+        <!-- Agrega más enlaces según tus apps -->
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h1>{% block header_title %}Panel de Gestión{% endblock %}</h1>
+            <p>{% block header_subtitle %}Bienvenido al sistema de corrección y reportes{% endblock %}</p>
+        </header>
+
+        {% block content %}{% endblock %}
+        {% block extra_js %}{% endblock %}
+    </div>
+</body>
+
+</html>

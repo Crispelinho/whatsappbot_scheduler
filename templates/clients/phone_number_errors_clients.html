@@ -1,10 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block content %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+
+{% block extra_head %}
 <link rel="stylesheet" href="{% static 'clients/datatable_custom.css' %}">
 <link rel="stylesheet" href="{% static 'clients/custom_theme.css' %}">
+{% endblock %}
 
+{% block content %}
 <h2>Corrección de números de clientes</h2>
 <p style="font-size:1.1em;margin-bottom:1em;">Total de clientes con error: <strong>{{ total_clients }}</strong></p>
 
@@ -76,8 +78,6 @@
 </form>
 {% endblock %}
 {% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script>
 function updateSelectAllState(name, selectAllId) {
     const checkboxes = document.getElementsByName(name);

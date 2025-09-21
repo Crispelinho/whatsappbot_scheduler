@@ -1,0 +1,31 @@
+/* static/css/base.css */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f4f6f9;
+}
+.sidebar {
+    width: 240px;
+    background-color: #2a3b6e;
+    color: white;
+    height: 100vh;
+    position: fixed;
+    padding: 2em 1em;
+}
+.sidebar a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    margin: 1em 0;
+    font-weight: bold;
+}
+.sidebar a:hover {
+    text-decoration: underline;
+}
+.main-content {
+    margin-left: 240px;
+    padding: 2em;
+}
+header {
+    margin-bottom: 2em;
+}

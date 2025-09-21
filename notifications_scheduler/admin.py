@@ -60,8 +60,8 @@ class ClientScheduledMessageResource(resources.ModelResource):
 @admin.register(ClientScheduledMessage)
 class ClientScheduledMessageAdmin(ImportExportModelAdmin):
     resource_class = ClientScheduledMessageResource
-    list_display = ('id', 'scheduled_message', 'client', 'status_display', 'sent_at')
-    list_filter = ('response__status', 'scheduled_message')
+    list_display = ('id', 'scheduled_message', 'client', 'status_display', 'client__phone_format_error', 'sent_at')
+    list_filter = ('response__status', 'scheduled_message', 'client__phone_format_error')
     search_fields = ('client__full_name', 'client__phone_number')
     ordering = ('-sent_at',)
     readonly_fields = ('created_at', 'updated_at')

@@ -1,0 +1,40 @@
+/* static/datatable_theme.css */ 
+
+/* Estilos de cuadrícula para DataTables personalizados */
+table.dataTable {
+    border-collapse: collapse !important;
+}
+table.dataTable th, table.dataTable td {
+    border: 1px solid #bdbdbd !important;
+    background-color: #fff;
+}
+table.dataTable thead th {
+    background-color: #2a3b6e;
+    color: white;
+    font-weight: bold;
+}
+table.dataTable tr {
+    border-bottom: 1px solid #bdbdbd !important;
+}
+
+/* paginación */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    background: #fff;
+    border: 1px solid #bdbdbd;
+    border-radius: 3px;
+    color: #2a3b6e !important;
+    margin: 0 2px;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #2a3b6e;
+    color: #fff !important;
+}
+
+/* filtros */
+.dataTables_wrapper .dataTables_filter input,
+.dataTables_wrapper .dataTables_length select {
+    border: 1px solid #bdbdbd;
+    border-radius: 4px;
+    background: #f9f9fc;
+    padding: 0.2em 0.5em;
+}

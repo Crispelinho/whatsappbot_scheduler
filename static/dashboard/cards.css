@@ -1,10 +1,3 @@
-/* static/css/dashboard.css */
-table.dataTable thead th {
-    background-color: #2a3b6e;
-    color: white;
-    font-weight: bold;
-}
-
 .card-grid {
     display: flex;
     gap: 1em;

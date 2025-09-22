@@ -26,7 +26,7 @@ def sale_import(request):
         counters = {"exitos": 0, "fallos": 0, "invalid_operations": 0, "value_errors": 0}
 
         for i, row in enumerate(rows):
-            ok, err = import_create(row)  # procesar fila individual
+            ok, err = import_create(row, counters)  # procesar fila individual
             if not ok:
                 row["Error"] = err
                 errores_por_fila.append(row)

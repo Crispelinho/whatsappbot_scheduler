@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'clients',
     'sales',
     'appointments',
+    'dashboard',
     'django_celery_beat',
+    'django_bootstrap_icons',
 ]
 
 MIDDLEWARE = [

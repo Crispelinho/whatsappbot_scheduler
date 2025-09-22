@@ -220,3 +220,7 @@ missing_keys_pl.txt
 sqlite.py
 31_08_2025.sqlite3
 debug/*
+
+
+*.json
+credentials/*

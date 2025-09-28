@@ -2,6 +2,8 @@ import secrets
 import string
 from django.db import models
 
+from clients import utils
+
 # Create your models here.
 
 def generate_unknown_name(self, length: int = 10) -> str:
@@ -12,11 +14,14 @@ def generate_unknown_name(self, length: int = 10) -> str:
 class PhoneFormatError(models.TextChoices):
     VALID = "valid", "Válido"
     NOT_NUMERIC = "not_numeric", "No son números"
+    INTERNACIONAL_NUMER = "internacional", "Número internacional"
+    MORE_THAN_ONE_NUMBER = "more_than_one", "Más de un número"
     TOO_LONG = "too_long", "Más de 10 dígitos"
     TOO_SHORT = "too_short", "Menos de 10 dígitos"
     STARTS_PLUS = "starts_plus", "Comienza por +"
     SPECIAL_CHARS = "special_chars", "Contiene caracteres especiales"
     EMPTY = "empty", "Vacío"
+    UNKNOWN = "unknown", "Desconocido"
 
 class Client(models.Model):
     class ClientType(models.TextChoices):
@@ -27,8 +32,13 @@ class Client(models.Model):
     
     full_name = models.CharField(max_length=100, default=generate_unknown_name)
     area_code = models.CharField(max_length=5, default="57")
+    original_area_code = models.CharField(max_length=10, blank=True, null=True, help_text="Código de área original para histórico.")
     phone_number = models.CharField(max_length=20, blank=True, null=True)
+    original_phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Valor original del número para histórico.")
+    second_area_code = models.CharField(max_length=5, blank=True, null=True)
     second_phone_number = models.CharField(max_length=20, blank=True, null=True)
+    third_area_code = models.CharField(max_length=5, blank=True, null=True)
+    third_phone_number = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     birthday = models.DateField(blank=True, null=True)
     first_visit_date = models.DateField(blank=True, null=True)
@@ -51,24 +61,33 @@ class Client(models.Model):
 
 
     @staticmethod
-    def validate_phone_format(phone_number):
+    def validate_phone_format(phone_number, area_code):
         """
-        Valida el formato y retorna el tipo de error (ENUM).
+        Aplica la estrategia correspondiente y retorna el tipo de error (PhoneFormatError).
         """
-        if not phone_number:
-            return PhoneFormatError.EMPTY
-        if phone_number.startswith('+'):
-            return PhoneFormatError.STARTS_PLUS
-        cleaned = "".join(filter(str.isdigit, phone_number))
-        if not cleaned.isdigit():
-            return PhoneFormatError.NOT_NUMERIC
-        if len(cleaned) > 10:
-            return PhoneFormatError.TOO_LONG
-        if len(cleaned) < 10:
-            return PhoneFormatError.TOO_SHORT
-        if any(c for c in phone_number if not c.isdigit() and c not in ['+', ' '] ):
-            return PhoneFormatError.SPECIAL_CHARS
-        return PhoneFormatError.VALID
+
+        for strategy in utils.PHONE_STRATEGIES:
+            if strategy.applies(phone_number, area_code):
+                strategy_name = strategy.__class__.__name__
+
+                # Mapeo explícito entre estrategia y tipo de error
+                mapping = {
+                    "EmptyPhoneStrategy": PhoneFormatError.EMPTY,
+                    "StartsPlusStrategy": PhoneFormatError.STARTS_PLUS,
+                    "NotNumericStrategy": PhoneFormatError.NOT_NUMERIC,
+                    "SpecialCharsStrategy": PhoneFormatError.SPECIAL_CHARS,
+                    "InternacionalNumberStrategy": PhoneFormatError.INTERNACIONAL_NUMER,
+                    "MoreThanOneNumbers": PhoneFormatError.MORE_THAN_ONE_NUMBER,
+                    "TooLongStrategy": PhoneFormatError.TOO_LONG,
+                    "TooShortStrategy": PhoneFormatError.TOO_SHORT,
+                    "ValidPhoneStrategy": PhoneFormatError.VALID,
+                    "FallbackStrategy": PhoneFormatError.UNKNOWN,
+                }
+
+                return mapping.get(strategy_name, PhoneFormatError.UNKNOWN)
+
+        return PhoneFormatError.UNKNOWN
+
 
     def check_primary_phone_match(self):
         """
@@ -84,7 +103,7 @@ class Client(models.Model):
 
     def save(self, *args, **kwargs):
         """Validar phone_number principal y marcar consistencias"""
-        format_error = self.validate_phone_format(self.phone_number)
+        format_error = self.validate_phone_format(self.phone_number, self.area_code)
         is_match = self.check_primary_phone_match()
         if format_error == PhoneFormatError.VALID and self.phone_number:
             self.phone_number = "".join(filter(str.isdigit, self.phone_number))
@@ -93,12 +112,14 @@ class Client(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.full_name} ({self.area_code} {self.phone_number})"
+        return f"({self.id}) {self.full_name} ({self.area_code} {self.phone_number})"
 
 class PhoneNumberClient(models.Model):
     client = models.ForeignKey('Client', on_delete=models.CASCADE, related_name='phone_numbers')
     phone_number = models.CharField(max_length=20)
+    original_phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Valor original del número para histórico.")
     area_code = models.CharField(max_length=10, blank=True, null=True)
+    original_area_code = models.CharField(max_length=10, blank=True, null=True, help_text="Código de área original para histórico.")
     is_primary = models.BooleanField(default=False)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -122,12 +143,12 @@ class PhoneNumberClient(models.Model):
         cleaned = "".join(filter(str.isdigit, phone_number))
         if not cleaned.isdigit():
             return PhoneFormatError.NOT_NUMERIC
+        if any(c for c in phone_number if not c.isdigit() and c not in ['+', ' '] ):
+            return PhoneFormatError.SPECIAL_CHARS
         if len(cleaned) > 10:
             return PhoneFormatError.TOO_LONG
         if len(cleaned) < 10:
             return PhoneFormatError.TOO_SHORT
-        if any(c for c in phone_number if not c.isdigit() and c not in ['+', ' '] ):
-            return PhoneFormatError.SPECIAL_CHARS
         return PhoneFormatError.VALID
 
     def check_primary_phone_match(self):

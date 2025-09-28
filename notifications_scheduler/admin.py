@@ -97,9 +97,14 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
 
 @admin.register(MessageResponse)
 class MessageResponseAdmin(ImportExportModelAdmin):
-    list_display = ('id', 'client_name', 'status', 'response_code', 'description', 'created_at')
-    list_filter = ('status', 'response_code')
-    search_fields = ('client_message__client__full_name', 'client_message__client__phone_number')
+    list_display = ('id', 'client_message__scheduled_message', 'client_message__client', 'status', 'response_code', 'description', 'created_at', 'updated_at')
+    list_filter = ('status', 'response_code', 'client_message__scheduled_message')
+    search_fields = (
+        'client_message__scheduled_message__subject',
+        'client_message__scheduled_message__message_text',
+        'client_message__client__full_name',
+        'client_message__client__phone_number'
+    )
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
 
@@ -107,9 +112,9 @@ class MessageResponseAdmin(ImportExportModelAdmin):
         qs = super().get_queryset(request)
         return qs.select_related('client_message__client')
 
-    def client_name(self, obj):
-        return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)
-    client_name.short_description = "Client"
+    # def client_name(self, obj):
+    #     return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)
+    # client_name.short_description = "Client"
 
 @admin.register(ClientScheduledMessageImportErrorLog)
 class ImportErrorLogAdmin(admin.ModelAdmin):

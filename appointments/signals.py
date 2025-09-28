@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Appointment
-from notifications_scheduler.models import ScheduledMessage, ClientMessage
+from notifications_scheduler.models import ScheduledMessage, ClientScheduledMessage
 
 @receiver(post_save, sender=Appointment)
 def create_scheduled_message_for_appointment(sender, instance, created, **kwargs):
@@ -14,7 +14,7 @@ def create_scheduled_message_for_appointment(sender, instance, created, **kwargs
             status='active'
         )
 
-        ClientMessage.objects.create(
+        ClientScheduledMessage.objects.create(
             client=instance.client,
             message=f"Recordatorio de cita para {instance.service} el día {instance.scheduled_datetime:%d/%m/%Y a las %H:%M}."
         )

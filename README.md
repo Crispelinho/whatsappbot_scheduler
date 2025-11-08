@@ -32,41 +32,61 @@
 
 ## 🛠️ Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-user/whatsappbot-scheduler.git
-   cd whatsappbot-scheduler
-   ```
-2. **Create and activate a virtual environment**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
-   ```
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. **Run migrations and create a superuser**
-   ```bash
-   python manage.py migrate
-   python manage.py createsuperuser
-   ```
-5. **Install and run Redis (required for Celery)**
-   Download from https://github.com/tporadowski/redis/releases and start the service.
-6. **Run the development server**
-   ```bash
-   python manage.py runserver
-   ```
-7. **Run Celery and Celery Beat (Windows)**
-   Use the batch file to launch both processes automatically:
-   ```bat
-   .\start_celery_windows.bat
-   ```
-   Or manually:
-   ```powershell
-   celery -A whatsappbot_scheduler worker --pool=solo --loglevel=info
-   celery -A whatsappbot_scheduler beat --loglevel=info
-   ```
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-user/whatsappbot-scheduler.git
+cd whatsappbot-scheduler
+```
+
+### 2. Create and activate a virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Run migrations and create a superuser
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+
+### 5. Instala y ejecuta Redis (requerido para Celery)
+
+Descarga e instala Redis para Windows desde https://github.com/tporadowski/redis/releases
+Inicia el servicio de Redis antes de continuar.
+
+### 6. Ejecuta el servidor de desarrollo
+
+```bash
+python manage.py runserver
+```
+
+### 7. Ejecuta Celery y Celery Beat (Windows)
+
+Usa el archivo por lotes incluido para lanzar ambos procesos automáticamente:
+
+```bat
+.\start_celery_windows.bat
+```
+
+Esto abrirá dos ventanas: una para el worker y otra para el scheduler (beat).
+
+Si prefieres hacerlo manualmente:
+
+```powershell
+celery -A whatsappbot_scheduler worker --pool=solo --loglevel=info
+celery -A whatsappbot_scheduler beat --loglevel=info
+```
 
 ---
 

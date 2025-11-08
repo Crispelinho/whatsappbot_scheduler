@@ -12,7 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 
-from notifications_scheduler.models import ErrorCode
+from notifications_scheduler.models import ResponseCode
 from notifications_scheduler.senders.base import MessageSendResult, SocialNetworkSenderInterface
 
 
@@ -74,7 +74,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         """Adjunta archivo (imagen o video) y lo envía."""
         success, attach_btn = self._wait_for_element(By.XPATH, "//button[@title='Adjuntar']", 20)
         if not success:
-            return False, MessageSendResult(success=False, error_code=ErrorCode.TIMEOUT, message=attach_btn)
+            return False, MessageSendResult(success=False, error_code=ResponseCode.TIMEOUT.value, message=attach_btn)
 
         attach_btn.click()
         time.sleep(1)
@@ -86,11 +86,11 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             input_file.send_keys(file_path)
             time.sleep(3)
         except Exception as e:
-            return False, MessageSendResult(success=False, error_code=ErrorCode.EXCEPTION, message=str(e))
+            return False, MessageSendResult(success=False, error_code=ResponseCode.EXCEPTION.value, message=str(e))
 
         success, send_btn = self._wait_for_element(By.XPATH, '//div[@aria-label="Enviar"]', 10)
         if not success:
-            return False, MessageSendResult(success=False, error_code=ErrorCode.TIMEOUT, message=send_btn)
+            return False, MessageSendResult(success=False, error_code=ResponseCode.TIMEOUT.value, message=send_btn)
 
         send_btn.click()
         time.sleep(5)
@@ -120,7 +120,6 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
     
     def send_message(
         self,
-        area_code: str,
         phone_number: str,
         message: str = None,
         image_path: str = None,
@@ -138,7 +137,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         if not phone_number:
             return MessageSendResult(
                 success=False,
-                error_code=ErrorCode.INVALID_NUMBER,
+                error_code=ResponseCode.INVALID_NUMBER.value,
                 message="Phone number is required"
             )
         
@@ -146,7 +145,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         # if not phone_number.startswith("+"):
         #     return MessageSendResult(
         #         success=False,
-        #         error_code=ErrorCode.INVALID_NUMBER,
+        #         error_code=ResponseCode.INVALID_NUMBER,
         #         message="Phone number must start with '+'"
         #     )
         
@@ -154,7 +153,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         if not self.driver.current_url.startswith("https://web.whatsapp.com"):
             return MessageSendResult(
                 success=False,
-                error_code=ErrorCode.WHATSAPP_DOWN,
+                error_code=ResponseCode.WHATSAPP_DOWN.value,
                 message="WhatsApp Web is not reachable"
             )
         
@@ -169,7 +168,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
             if self._is_invalid_number():
                 return MessageSendResult(
                     success=False,
-                    error_code=ErrorCode.INVALID_NUMBER,
+                    error_code=ResponseCode.INVALID_NUMBER.value,
                     message="Number not on WhatsApp"
                 )
 
@@ -179,7 +178,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
                 if not self._write_message(message):
                     return MessageSendResult(
                         success=False,
-                        error_code=ErrorCode.NO_INPUT_BOX,
+                        error_code=ResponseCode.NO_INPUT_BOX.value,
                         message="Input box not found"
                     )
             message_sucess_send_result = "Message sent successfully"
@@ -196,13 +195,13 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         except TimeoutException:
             return MessageSendResult(
                 success=False,
-                error_code=ErrorCode.TIMEOUT,
+                error_code=ResponseCode.TIMEOUT.value,
                 message="Timeout waiting for WhatsApp Web to load chat"
             )
 
         except Exception as e:
             return MessageSendResult(
                 success=False,
-                error_code=ErrorCode.EXCEPTION,
+                error_code=ResponseCode.EXCEPTION.value,
                 message=str(e)
             )

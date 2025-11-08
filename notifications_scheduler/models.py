@@ -5,7 +5,9 @@ from django.core.exceptions import ValidationError
 from clients.models import Client
 from enum import Enum
 
-class ErrorCode(Enum):
+class ResponseCode(Enum):
+    """Response codes for message sending errors."""
+    SUCCESS = "SUCCESS"
     NETWORK = "NETWORK"
     BLOCKED = "BLOCKED"
     INVALID_NUMBER = "INVALID_NUMBER"
@@ -136,17 +138,3 @@ class ClientScheduledMessage(models.Model):
 
     def __str__(self):
         return f"Message to {self.client.full_name} - {self.response.status}"
-
-    @property
-    def can_retry(self):
-        """Determina si se puede reintentar el envío según el error y cantidad de retries."""
-        if not hasattr(self, "response") or not self.response.error_type:
-            return False
-        return (
-            self.response.error_type.code in [
-                ErrorCode.NETWORK.value,
-                ErrorCode.TIMEOUT.value,
-                ErrorCode.RATE_LIMIT.value
-            ]
-            and self.retry_count < self.max_retries
-        )

@@ -173,4 +173,3 @@ class PhoneNumberClient(models.Model):
 
     def __str__(self):
         return f"{self.client} - {self.phone_number}{' (primary)' if self.is_primary else ''}"
-

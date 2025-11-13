@@ -16,7 +16,6 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-
 from sales.views import dashboard_view
 
 
@@ -27,3 +26,4 @@ urlpatterns = [
     path('sales/', include('sales.urls')),
     path('appointments/', include('appointments.urls')),
 ]
+

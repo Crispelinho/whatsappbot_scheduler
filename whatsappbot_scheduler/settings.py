@@ -47,8 +47,9 @@ INSTALLED_APPS = [
     'clients',
     'sales',
     'appointments',
+    'dashboard',
     'django_celery_beat',
-    'gsheets_import',
+    'django_bootstrap_icons',
 ]
 
 MIDDLEWARE = [

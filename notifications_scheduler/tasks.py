@@ -8,10 +8,11 @@ from .senders.whatsapp_sender import WhatsAppSeleniumSender
 
 @shared_task
 def send_scheduled_messages_task():
+    """Enqueue the task to send scheduled WhatsApp messages."""
     print("Celery está ejecutando la tarea de envío programado")
     call_command('send_scheduled_messages')
 
-RETRYABLE_ERRORS = ["NETWORK", "TIMEOUT", "WHATSAPP_DOWN", "RATE_LIMIT", "EXCEPTION"]
+RETRYABLE_ERRORS = ["NETWORK", "TIMEOUT", "WHATSAPP_DOWN", "RATE_LIMIT"]
 
 def update_message_status(resp: MessageResponse, success: bool, message_send_result: MessageSendResult):
     if success:

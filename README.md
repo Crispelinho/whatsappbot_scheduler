@@ -1,18 +1,21 @@
 # 📲 whatsappbot-scheduler
 
-**whatsappbot-scheduler** is a Django-based automation tool that allows you to schedule and send WhatsApp messages using Selenium and `pyperclip`.  
-It is designed to automate communication with multiple clients while avoiding WhatsApp detection or rate limiting.
+**whatsappbot-scheduler** is a Django-based automation tool for scheduling and sending WhatsApp messages to clients using Selenium and Celery.
 
 ---
 
 ## 🚀 Features
 
 - 🗓 Schedule messages to be sent in customizable batches.
-- 👥 Manage clients and link them to messages easily via Django admin.
+- 👥 Manage clients and link them to messages via Django admin.
+- 🔄 Automatic retry logic for failed messages (network, timeout, rate-limit) with configurable max retries.
 - 🧠 Avoids blocking by controlling sending frequency and batch sizes.
 - 💬 Supports text and emojis using `pyperclip`.
 - 📊 Tracks sending status and timestamps per message.
 - 🔒 Runs using new Chrome profiles to isolate sessions.
+- 📥 Bulk import/export for appointments and messages (django-import-export).
+- 🛠️ Service layer for message sending and error handling.
+- 🏗️ SOLID-compliant sender interface for extensibility.
 
 ---
 
@@ -20,6 +23,7 @@ It is designed to automate communication with multiple clients while avoiding Wh
 
 - Python 3.11
 - Django 5.x
+- Celery + Redis
 - Selenium
 - pyperclip
 - ChromeDriver + Google Chrome
@@ -72,7 +76,7 @@ python manage.py runserver
 Usa el archivo por lotes incluido para lanzar ambos procesos automáticamente:
 
 ```bat
-start_celery_windows.bat
+.\start_celery_windows.bat
 ```
 
 Esto abrirá dos ventanas: una para el worker y otra para el scheduler (beat).
@@ -86,18 +90,38 @@ celery -A whatsappbot_scheduler beat --loglevel=info
 
 ---
 
-## 💡 Example Usage
+## 💡 Usage & Testing
 
+### Django Admin
+- Create clients, appointments, and scheduled messages.
+- Bulk import/export supported for appointments and messages.
 
-1. Ingresa al Django Admin.
-2. Crea tus Clientes y Programaciones de Mensajes.
-3. El envío se realizará automáticamente cada minuto gracias a Celery Beat.
-4. Si quieres forzar el envío manualmente, ejecuta:
+### Message Sending: Manual, Enqueued, Automated & Retry
 
-```bash
-python manage.py send_scheduled_messages
-python manage.py enqueue_scheduled_messages
-```
+- **Manual test:**
+  Send all pending scheduled messages immediately:
+  ```bash
+  python manage.py send_scheduled_messages
+  ```
+- **Enqueued test (asynchronous):**
+  Enqueue messages for Celery workers:
+  ```bash
+  python manage.py enqueue_scheduled_messages
+  ```
+- **Automated periodic execution:**
+  Celery Beat triggers enqueuing and sending tasks automatically based on schedule.
+  Use the `.bat` file for easy startup on Windows:
+  ```bat
+  start_celery_windows.bat
+  ```
+- **Retry failed messages:**
+  The system automatically retries failed messages (network, timeout, rate-limit) up to the configured max retries. You can also trigger retries manually:
+  ```bash
+  python manage.py retry_failed_messages
+  ```
+
+- Combine manual and automated commands for different testing levels.
+- Check logs and admin for message status and errors.
 
 ---
 

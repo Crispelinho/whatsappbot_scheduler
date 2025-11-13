@@ -43,6 +43,10 @@ INSTALLED_APPS = [
     'notifications_scheduler',
     'clients',
     'sales',
+    'appointments',
+    'dashboard',
+    'django_celery_beat',
+    'django_bootstrap_icons',
 ]
 
 MIDDLEWARE = [
@@ -84,6 +88,8 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 # Password validation
@@ -129,6 +135,10 @@ CELERY_BEAT_SCHEDULE = {
     'send-scheduled-messages-every-minute': {
         'task': 'notifications_scheduler.tasks.send_scheduled_messages_task',
         'schedule': crontab(),  # cada minuto
+    },
+    "retry-failed-messages-every-10min": {
+        "task": "notifications_scheduler.tasks.retry_failed_messages",
+        "schedule": crontab(minute="*/10"),  # cada 10 minutos
     },
 }
 

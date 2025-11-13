@@ -11,10 +11,6 @@ class ScheduledMessageAdmin(ImportExportModelAdmin):
         'id', 'subject', 'status', 'start_datetime', 
         'send_frequency', 'recipient_count', 'created_at'
     )
-    list_display = (
-        'id', 'subject', 'status', 'start_datetime', 
-        'send_frequency', 'recipient_count', 'created_at'
-    )
     list_filter = ('status', 'send_frequency')
     search_fields = ('subject', 'message_text')
     ordering = ('-start_datetime',)
@@ -66,7 +62,7 @@ class ClientScheduledMessageResource(resources.ModelResource):
 @admin.register(ClientScheduledMessage)
 class ClientScheduledMessageAdmin(ImportExportModelAdmin):
     resource_class = ClientScheduledMessageResource
-    list_display = ('id', 'scheduled_message', 'client', 'status_display', 'sent_at')
+    list_display = ('id', 'scheduled_message', 'client_name', 'status_display', 'sent_at')
     list_filter = ('response__status', 'scheduled_message')
     search_fields = ('client__full_name', 'client__phone_number')
     ordering = ('-sent_at',)
@@ -97,37 +93,45 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
     client_name.short_description = "Client"
 
     def save_model(self, request, obj, form, change):
-        if not obj.client:
-            print("Error: No client assigned to ClientScheduledMessage", obj)
-            raise ValueError("Debes seleccionar un cliente antes de guardar.")
-        try:
-            super().save_model(request, obj, form, change)
-            if not hasattr(obj, 'response'):
-                MessageResponse.objects.create(
-                    client_message=obj,
-                    status=MessageResponse.Status.PENDING
-                )
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            raise
+        # Guardar el ClientScheduledMessage
+        super().save_model(request, obj, form, change)
+
+        # Crear MessageResponse si no existe
+        if not hasattr(obj, 'response'):
+            MessageResponse.objects.create(
+                client_message=obj,
+                status=MessageResponse.Status.PENDING
+            )
+    def client_name(self, obj):
+        return getattr(getattr(obj, 'client', None), 'full_name', None)
+    client_name.short_description = "Client"
+
+    def save_model(self, request, obj, form, change):
+        # Guardar el ClientScheduledMessage
+        super().save_model(request, obj, form, change)
+
+        # Crear MessageResponse si no existe
+        if not hasattr(obj, 'response'):
+            MessageResponse.objects.create(
+                client_message=obj,
+                status=MessageResponse.Status.PENDING
+            )
 
 @admin.register(MessageResponse)
 class MessageResponseAdmin(ImportExportModelAdmin):
-    list_display = ('id', 'client_message__scheduled_message', 'client_message__client', 'status', 'response_code', 'description', 'created_at', 'updated_at')
-    list_filter = ('status', 'response_code', 'client_message__scheduled_message')
-    search_fields = (
-        'client_message__scheduled_message__subject',
-        'client_message__scheduled_message__message_text',
-        'client_message__client__full_name',
-        'client_message__client__phone_number'
-    )
+    list_display = ('id', 'client_name', 'status', 'error_type', 'created_at')
+    list_filter = ('status', 'error_type')
+    search_fields = ('client_message__client__full_name', 'client_message__client__phone_number')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related('client_message__client', 'error_type')
+
+    def client_name(self, obj):
+        return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)
+    client_name.short_description = "Client"
 
     # def client_name(self, obj):
     #     return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)

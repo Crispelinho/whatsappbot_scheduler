@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Métricas de Clientes{% endblock %}
+{% block header_title %}Métricas de Clientes{% endblock %}
+{% block header_subtitle %}Resumen de actividad y ventas{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2em;margin-bottom:2em}
+.metric-box{background:#fff;padding:1em;border:1px solid #ddd;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chart-container{margin-bottom:2em}
+.table-small{width:100%;border-collapse:collapse;font-size:.85em}
+.table-small th,.table-small td{border:1px solid #e2e2e2;padding:.4em .6em;text-align:left}
+.table-small th{background:#f5f5f5}
+</style>
+{% endblock %}
+{% block content %}
+<form method="get" style="margin-bottom:1em;display:flex;gap:.6em;align-items:end;">
+  <div>
+    <label for="client_id">Filtrar por ID cliente:</label>
+    <input type="number" name="client_id" id="client_id" value="{{ client_id|default:'' }}" min="1" placeholder="ID">
+  </div>
+  <button type="submit">Aplicar</button>
+  {% if client_id %}<a href="?" style="margin-left:1em;">Limpiar filtro</a>{% endif %}
+</form>
+<div class="chart-container">
+  <h3>Ventas por Mes</h3>
+  <canvas id="monthlyChart" height="120"></canvas>
+</div>
+<div class="chart-container">
+  <h3>Servicios más realizados {% if client_id %}por el cliente{% endif %}</h3>
+  <canvas id="servicesChart" height="120"></canvas>
+</div>
+{% if not client_id %}
+<div class="metric-box">
+  <h3>Top Clientes (Visitas)</h3>
+  <table class="table-small">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Visitas</th><th>Última visita</th><th>Total Pagado</th></tr></thead>
+    <tbody>
+      {% for c in top_clients %}
+      <tr>
+        <td>{{ c.client__id }}</td>
+        <td>{{ c.client__full_name }}</td>
+        <td>{{ c.visits }}</td>
+        <td>{{ c.last_visit }}</td>
+        <td>{{ c.total_paid }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" style="text-align:center;color:#888;">Sin datos</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+const monthlyLabels = {{ monthly_labels|safe }};
+const monthlyTotals = {{ monthly_totals|safe }};
+const serviceLabels = {{ client_services_labels|default:top_service_labels|safe }};
+const serviceCounts = {{ client_services_counts|default:top_service_counts|safe }};
+function buildLine(id,labels,data,label){
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:label,data:data,borderColor:'rgba(54,162,235,1)',backgroundColor:'rgba(54,162,235,.2)',tension:.25,fill:true}]} ,options:{responsive:true,plugins:{legend:{display:true}}}});
+}
+function buildBar(id,labels,data,label){
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:label,data:data,backgroundColor:'rgba(75,192,192,.5)',borderColor:'rgba(75,192,192,1)',borderWidth:1}]} ,options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{beginAtZero:true}}}});
+}
+buildLine('monthlyChart', monthlyLabels, monthlyTotals, 'Total Pagado');
+buildBar('servicesChart', serviceLabels, serviceCounts, 'Servicios realizados');
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Appointment
-from notifications_scheduler.models import ClientScheduledMessage, MessageResponse, ScheduledMessage, ClientMessage
+from notifications_scheduler.models import ClientScheduledMessage, MessageResponse, ScheduledMessage
 
 @receiver(post_save, sender=Appointment)
 def create_scheduled_message_for_appointment(sender, instance, created, **kwargs):

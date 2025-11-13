@@ -72,7 +72,7 @@ class ScheduledMessage(models.Model):
 class ErrorType(models.Model):
     """Error types (e.g., Network, SocialNetworkSenderInterface Block, Invalid Client, etc.)"""
     name = models.CharField(max_length=100)
-    code = models.CharField(max_length=50, unique=True, choices=[(e.value, e.name) for e in ErrorCode])
+    code = models.CharField(max_length=50, unique=True, choices=[(e.value, e.name) for e in ResponseCode])
     description = models.TextField()
     retryable = models.BooleanField(default=False)
 

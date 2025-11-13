@@ -208,3 +208,5 @@ __marimo__/
 
 chrome_selenium_driver/
 chrome_selenium_profile/*
+
+debug/*

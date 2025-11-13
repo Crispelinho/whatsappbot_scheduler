@@ -9,6 +9,7 @@ from notifications_scheduler.models import ScheduledMessage, ClientScheduledMess
 from notifications_scheduler.senders.whatsapp_sender import WhatsAppSeleniumSender
 from notifications_scheduler.services import send_message_to_client
 from notifications_scheduler.tasks import RETRYABLE_ERRORS
+from clients.models import PhoneFormatError
 
 class Command(BaseCommand):
     help = "Send scheduled WhatsApp messages to clients"
@@ -20,7 +21,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         now = timezone.now()
         scheduled_messages = ScheduledMessage.objects.filter(status="active", start_datetime__lte=now)
-
+        print(f"Found {scheduled_messages.count()} active scheduled messages to process.")
         for scheduled in scheduled_messages:
             batch_size = scheduled.recipient_count if scheduled.recipient_count > 0 else 50
             has_more = True
@@ -28,8 +29,13 @@ class Command(BaseCommand):
 
             while has_more:
                 pending_messages = ClientScheduledMessage.objects.filter(
+                    scheduled_message=scheduled
+                ).filter(
                     Q(response__status="pending") |
                     Q(response__status="failed", response__response_code__in=RETRYABLE_ERRORS)
+                ).filter(
+                    client__phone_format_error=PhoneFormatError.VALID,
+                    client__client_type=scheduled.client_type
                 )[offset:offset + batch_size]
 
                 if not pending_messages.exists():

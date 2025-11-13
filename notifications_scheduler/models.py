@@ -11,6 +11,7 @@ class ResponseCode(Enum):
     NETWORK = "NETWORK"
     BLOCKED = "BLOCKED"
     INVALID_NUMBER = "INVALID_NUMBER"
+    NOT_FOUND_IN_WHATSAPP = "NOT_FOUND_IN_WHATSAPP"
     TIMEOUT = "TIMEOUT"
     RATE_LIMIT = "RATE_LIMIT"
     UNKNOWN = "UNKNOWN"
@@ -51,6 +52,13 @@ class ScheduledMessage(models.Model):
         blank=True,
         help_text="Optional image to send with the message"
     )
+    # image1 = models.ImageField(
+    #     "Optional Image 1",
+    #     upload_to="scheduled_messages/images/",
+    #     null=True,
+    #     blank=True,
+    #     help_text="Optional image to send with the message"
+    # )
     video = models.FileField(
         "Optional Video",
         upload_to="scheduled_messages/videos/",
@@ -60,6 +68,13 @@ class ScheduledMessage(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    client_type = models.CharField(
+        max_length=20,
+        choices=Client.ClientType.choices,
+        default=Client.ClientType.CONSOLIDATED,
+        blank=True,
+        help_text="Tipo de cliente al momento de enviar la notificación."
+    )
 
     class Meta:
         verbose_name = "Scheduled Message"
@@ -127,8 +142,8 @@ class ClientScheduledMessage(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Client Message"
-        verbose_name_plural = "Client Messages"
+        verbose_name = "Client Scheduled Message"
+        verbose_name_plural = "Client Scheduled Messages"
         constraints = [
             models.UniqueConstraint(
                 fields=["scheduled_message", "client"],
@@ -137,4 +152,34 @@ class ClientScheduledMessage(models.Model):
         ]
 
     def __str__(self):
-        return f"Message to {self.client.full_name} - {self.response.status}"
+        status = self.response.status if hasattr(self, "response") else "no response"
+        return f"Message to {self.client.full_name} - {status}"
+
+    @property
+    def can_retry(self):
+        """Determina si se puede reintentar el envío según el response_code y cantidad de retries."""
+        if not hasattr(self, "response") or not self.response.response_code:
+            return False
+        return (
+            self.response.response_code in [
+                ResponseCode.NETWORK.value,
+                ResponseCode.TIMEOUT.value,
+                ResponseCode.WHATSAPP_DOWN.value,
+                ResponseCode.RATE_LIMIT.value
+            ]
+            and self.retry_count < self.max_retries
+        )
+
+class ImportErrorLog(models.Model):
+    line_number = models.IntegerField()
+    error_message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Error en línea {self.line_number}: {self.error_message[:50]}"
+    
+class ClientScheduledMessageImportErrorLog(ImportErrorLog):
+    client_scheduled_message = models.ForeignKey(ClientScheduledMessage, on_delete=models.CASCADE, related_name="import_errors")
+    
+    def __str__(self):
+        return f"Error en línea {self.line_number} para ClientScheduledMessage {self.client_scheduled_message.id}: {self.error_message[:50]}"

@@ -5,6 +5,8 @@ from .senders.base import SocialNetworkSenderInterface
 def send_message_to_client(client_msg: ClientScheduledMessage, social_network_sender: SocialNetworkSenderInterface) -> None:
     area_code = client_msg.client.area_code or ""
     phone = client_msg.client.phone_number
+    if phone and not phone.startswith("+"):
+        phone = area_code + phone
     text = client_msg.scheduled_message.message_text
     image = client_msg.scheduled_message.image.path if client_msg.scheduled_message.image else None
     video = client_msg.scheduled_message.video.path if client_msg.scheduled_message.video else None

@@ -110,11 +110,7 @@ class MessageResponseAdmin(ImportExportModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.select_related('client_message__client', 'error_type')
-
-    def client_name(self, obj):
-        return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)
-    client_name.short_description = "Client"
+        return qs.select_related('client_message__client')
 
     # def client_name(self, obj):
     #     return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)

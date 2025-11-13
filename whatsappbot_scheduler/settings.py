@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'dashboard',
     'django_celery_beat',
     'django_bootstrap_icons',
+    'gsheets_import',
 ]
 
 MIDDLEWARE = [

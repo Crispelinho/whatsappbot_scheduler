@@ -11,8 +11,14 @@ class ScheduledMessageAdmin(ImportExportModelAdmin):
         'id', 'subject', 'status', 'start_datetime', 
         'send_frequency', 'recipient_count', 'created_at'
     )
+    list_display = (
+        'id', 'subject', 'status', 'start_datetime', 
+        'send_frequency', 'recipient_count', 'created_at'
+    )
     list_filter = ('status', 'send_frequency')
     search_fields = ('subject', 'message_text')
+    ordering = ('-start_datetime',)
+    readonly_fields = ('created_at', 'updated_at')
     ordering = ('-start_datetime',)
     readonly_fields = ('created_at', 'updated_at')
 
@@ -74,6 +80,17 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
         return getattr(getattr(obj, 'response', None), 'status', None)
     status_display.short_description = "Status"
     status_display.admin_order_field = 'response__status'
+    ordering = ('-sent_at',)
+    readonly_fields = ('created_at', 'updated_at')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('response', 'client', 'scheduled_message')
+
+    def status_display(self, obj):
+        return getattr(getattr(obj, 'response', None), 'status', None)
+    status_display.short_description = "Status"
+    status_display.admin_order_field = 'response__status'
 
     def client_name(self, obj):
         return getattr(getattr(obj, 'client', None), 'full_name', None)
@@ -110,7 +127,7 @@ class MessageResponseAdmin(ImportExportModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.select_related('client_message__client')
+        return qs.select_related('client_message__client', 'error_type')
 
     # def client_name(self, obj):
     #     return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)

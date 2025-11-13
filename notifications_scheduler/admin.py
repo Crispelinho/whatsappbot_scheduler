@@ -79,29 +79,6 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
     ordering = ('-sent_at',)
     readonly_fields = ('created_at', 'updated_at')
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.select_related('response', 'client', 'scheduled_message')
-
-    def status_display(self, obj):
-        return getattr(getattr(obj, 'response', None), 'status', None)
-    status_display.short_description = "Status"
-    status_display.admin_order_field = 'response__status'
-
-    def client_name(self, obj):
-        return getattr(getattr(obj, 'client', None), 'full_name', None)
-    client_name.short_description = "Client"
-
-    def save_model(self, request, obj, form, change):
-        # Guardar el ClientScheduledMessage
-        super().save_model(request, obj, form, change)
-
-        # Crear MessageResponse si no existe
-        if not hasattr(obj, 'response'):
-            MessageResponse.objects.create(
-                client_message=obj,
-                status=MessageResponse.Status.PENDING
-            )
     def client_name(self, obj):
         return getattr(getattr(obj, 'client', None), 'full_name', None)
     client_name.short_description = "Client"

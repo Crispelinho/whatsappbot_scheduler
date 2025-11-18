@@ -29,6 +29,9 @@
         <a href="{% url 'dashboard:clients_metrics' %}" class="{% if request.resolver_match.url_name == 'clients_metrics' %}active{% endif %}">
             Métricas Clientes
         </a>
+        <a href="{% url 'dashboard:scheduled_messages' %}" class="{% if request.resolver_match.url_name == 'scheduled_messages' %}active{% endif %}">
+            Mensajes Programados
+        </a>
 
         <!-- Agrega más enlaces según tus apps -->
     </div>

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Cliente {{ client.full_name }}{% endblock %}
+{% block header_title %}Métricas de Cliente{% endblock %}
+{% block header_subtitle %}Detalle histórico y patrones de visita{% endblock %}
+{% block extra_head %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+{% block content %}
+<a href="{% url 'dashboard:clients_metrics' %}" style="text-decoration:none;font-size:.8rem;">← Volver a métricas generales</a>
+{% if client %}
+  <h1 style="font-size:2rem;margin:.4em 0 .6em;letter-spacing:.5px;line-height:1.1;">{{ client.full_name }}</h1>
+{% endif %}
+<form method="get" style="margin-top:.7em;display:flex;flex-wrap:wrap;gap:.8em;align-items:end;">
+  <div>
+    <label for="start_date">Inicio:</label>
+    <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+  </div>
+  <div>
+    <label for="end_date">Fin:</label>
+    <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+  </div>
+  <button type="submit">Aplicar</button>
+  <a href="?" style="font-size:.75rem;">Limpiar</a>
+  <a href="?export=csv&start_date={{ start_date }}&end_date={{ end_date }}" style="background:#2563eb;color:#fff;padding:.4em .7em;border-radius:4px;text-decoration:none;font-size:.75rem;">Descargar CSV</a>
+</form>
+{% if no_data %}
+  <div style="margin-top:1em;padding:1em;border:1px solid #ddd;border-radius:6px;background:#fff;">No hay registros para el cliente (ID {{ client_id }})</div>
+{% else %}
+<div style="display:grid;gap:1em;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));margin-top:1em;">
+  <div style="background:#fff;padding:1em;border:1px solid #ddd;border-radius:6px;">
+    <h4 style="margin-top:0;">Identidad</h4>
+    <p><strong>ID:</strong> {{ client.id }}</p>
+    <p><strong>Nombre:</strong> {{ client.full_name }}</p>
+    <p><strong>Visitas totales:</strong> {{ count_visits }}</p>
+  </div>
+  <div style="background:#fff;padding:1em;border:1px solid #ddd;border-radius:6px;">
+    <h4 style="margin-top:0;">Servicios</h4>
+    <p><strong>Primer servicio:</strong> {{ first_service.name }} ({{ first_service_date }})</p>
+    <p><strong>Último servicio:</strong> {{ last_service.name }} ({{ last_service_date }})</p>
+    <p><strong>Servicio más frecuente:</strong> {{ top_service_name|default:'—' }} ({{ top_service_times }})</p>
+  </div>
+  <div style="background:#fff;padding:1em;border:1px solid #ddd;border-radius:6px;">
+    <h4 style="margin-top:0;">Gastos</h4>
+    <p><strong>Total pagado:</strong> {{ total_paid }}</p>
+    <p><strong>Promedio por visita:</strong> {{ avg_paid }}</p>
+    <p><strong>Última visita (monto):</strong> {{ last_visit_paid }}</p>
+  </div>
+  <div style="background:#fff;padding:1em;border:1px solid #ddd;border-radius:6px;">
+    <h4 style="margin-top:0;">Frecuencia</h4>
+    <p><strong>Días desde última visita:</strong> <span {% if inactive_over_30 %}style="color:#dc2626;font-weight:bold;"{% endif %}>{{ days_since_last }}</span></p>
+    <p><strong>Promedio días entre visitas:</strong> {{ avg_interval|default:'—' }}</p>
+    {% if inactive_over_30 %}
+      <div style="margin-top:.5em;padding:.5em .7em;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:4px;font-size:.8rem;">
+        ⚠️ El cliente lleva más de 30 días sin visitar el salón.
+      </div>
+    {% endif %}
+  </div>
+</div>
+<div style="margin-top:1.5em;background:#fff;padding:1em;border:1px solid #ddd;border-radius:6px;">
+  <h4 style="margin-top:0;">Evolución de gasto</h4>
+  <canvas id="spendingChart" height="140"></canvas>
+</div>
+<div style="margin-top:1.5em;background:#fff;padding:1em;border:1px solid #ddd;border-radius:6px;">
+  <h4 style="margin-top:0;">Intervalos entre visitas (días)</h4>
+  {% if intervals %}
+    <div style="display:flex;gap:.4em;flex-wrap:wrap;">
+      {% for d in intervals %}<span style="background:#f1f5f9;padding:.35em .6em;border-radius:4px;font-size:.75rem;">{{ d }}d</span>{% endfor %}
+    </div>
+  {% else %}
+    <p style="color:#666;font-size:.85rem;">Insuficientes visitas para calcular intervalos.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+const spendingDates = {{ spending_dates|safe }};
+const spendingAmounts = {{ spending_amounts|safe }};
+if (spendingDates.length && document.getElementById('spendingChart')) {
+  new Chart(document.getElementById('spendingChart'), {
+    type: 'line',
+    data: { labels: spendingDates, datasets: [{ label: 'Total pagado', data: spendingAmounts, borderColor: 'rgba(99,102,241,1)', backgroundColor:'rgba(99,102,241,.2)', tension:.25, fill:true }] },
+    options: { responsive:true, plugins:{ legend:{ display:true } }, scales:{ y:{ beginAtZero:true } } }
+  });
+}
+</script>
+{% endblock %}

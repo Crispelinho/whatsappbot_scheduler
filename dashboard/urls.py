@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import DashboardIndex, ClientMetricsView, ClientDetailMetricsView, ScheduledMessagesView
+from .views import DashboardIndex, ClientMetricsView, ClientDetailMetricsView, ScheduledMessagesView, OperatorsMetricsView, OperatorDetailView, OperatorCreateView, OperatorLiquidatorView
 from notifications_scheduler.views import ScheduledMessageDetailView, ResendClientMessageView
 
 app_name = 'dashboard'
@@ -10,4 +10,8 @@ urlpatterns = [
     path('scheduled-messages/', ScheduledMessagesView.as_view(), name='scheduled_messages'),
     path('scheduled-messages/<int:pk>/', ScheduledMessageDetailView.as_view(), name='scheduled_message_detail'),
     path('scheduled-messages/<int:pk>/resend/<int:client_id>/', ResendClientMessageView.as_view(), name='scheduled_message_resend'),
+    path('operators-metrics/', OperatorsMetricsView.as_view(), name='operators_metrics'),
+    path('operator/<int:operator_id>/', OperatorDetailView.as_view(), name='operator_detail'),
+    path('operator/add/', OperatorCreateView.as_view(), name='operator_add'),
+    path('operator-liquidator/', OperatorLiquidatorView.as_view(), name='operator_liquidator'),
 ]

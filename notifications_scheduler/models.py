@@ -20,6 +20,11 @@ class ResponseCode(Enum):
     EXCEPTION = "EXCEPTION"
 
 class ScheduledMessage(models.Model):
+    auto_generate_client_scheduled_messages = models.BooleanField(
+        default=False,
+        verbose_name="Auto generate client scheduled messages",
+        help_text="Si está activo, al guardar se generarán/actualizarán ClientScheduledMessages para todos los clientes del tipo seleccionado y sus MessageResponses."
+    )
     subject = models.CharField("Subject", max_length=255)
     message_text = models.TextField("Message Text")
     start_datetime = models.DateTimeField("Start Date and Time", default=timezone.now)
@@ -122,6 +127,11 @@ class ClientScheduledMessage(models.Model):
     retry_count = models.PositiveIntegerField(default=0)
     max_retries = models.PositiveIntegerField(default=3)
     last_retry_at = models.DateTimeField(null=True, blank=True)
+    force_pending_on_update = models.BooleanField(
+        default=False,
+        verbose_name="Force MessageResponse to pending on update",
+        help_text="¿Desea actualizar el estado del mensaje programado a pendiente?"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

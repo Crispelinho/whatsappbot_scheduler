@@ -2,10 +2,12 @@
 from django.db import models
 from clients.models import Client
 
+
 class Operator(models.Model):
     name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     commission_percentage = models.DecimalField(max_digits=5, decimal_places=2)  # e.g. 0.60 = 60%
+    service_types = models.ManyToManyField('ServiceType', blank=True, related_name='operators', help_text="Tipos de servicio que puede realizar la operaria")
 
     def __str__(self):
         return self.name

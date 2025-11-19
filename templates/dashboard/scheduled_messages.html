@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Mensajes Programados{% endblock %}
+{% block header_title %}Mensajes Programados{% endblock %}
+{% block header_subtitle %}Gestión y estado de envíos recurrentes{% endblock %}
+{% block extra_head %}
+<style>
+.form-control{width:100%;padding:.5rem;border:1px solid #ddd;border-radius:4px;font-size:.9rem;}
+.form-control:focus{outline:none;border-color:#2563eb;}
+textarea.form-control{font-family:inherit;resize:vertical;}
+.form-group{margin-bottom:1rem;}
+.form-group label{display:block;font-weight:500;margin-bottom:.3rem;font-size:.85rem;color:#333;}
+.btn-primary{background:#2563eb;color:#fff;padding:.65rem 1.25rem;border:none;border-radius:4px;cursor:pointer;font-size:.9rem;width:100%;font-weight:500;}
+.btn-primary:hover{background:#1d4ed8;}
+.form-panel{background:#f9fafb;border:1px solid #e5e7eb;padding:1.5rem;border-radius:8px;}
+/* Modal responsive */
+#newMsgModal {
+  display:none;position:fixed;z-index:1000;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.18);align-items:center;justify-content:center;
+}
+#newMsgModal .modal-content {
+  background:#fff;min-width:0;max-width:420px;width:96vw;padding:1.2rem 1rem 1rem 1rem;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.18);position:relative;max-height:96vh;overflow-y:auto;
+}
+@media (max-width:600px) {
+  #newMsgModal .modal-content {padding:.7rem .3rem .7rem .3rem;max-width:99vw;}
+}
+</style>
+{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr;gap:2rem;align-items:start;">
+  <div style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;">
+    <h2 style="margin:0 0 1rem 0;">📋 Listado de Mensajes Programados</h2>
+    <button id="openNewMsgModal" class="btn-primary" style="width:auto;padding:.5em 1.2em;font-size:1rem;">➕ Crear mensaje programado</button>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+    <table class="table-small" id="scheduledMessagesTable" style="width:100%;border-collapse:collapse;font-size:.85rem;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Asunto</th>
+          <th>Inicio</th>
+          <th>Frecuencia</th>
+          <th>Estado</th>
+          <th>Tipo Cliente</th>
+          <th>Total</th>
+          <th>Enviados</th>
+          <th>Pendientes</th>
+          <th>Fallidos</th>
+          <th>Creado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for m in scheduled_messages %}
+        <tr>
+          <td>{{ m.id }}</td>
+          <td>{{ m.subject }}</td>
+          <td>{{ m.start_datetime|date:'Y-m-d H:i' }}</td>
+          <td>{{ m.send_frequency }}</td>
+          <td>{{ m.status }}</td>
+          <td>{{ m.client_type }}</td>
+          <td>{{ m.total_msgs }}</td>
+          <td>{{ m.sent_count }}</td>
+          <td>{{ m.pending_count }}</td>
+          <td>{{ m.failed_count }}</td>
+          <td>{{ m.created_at|date:'Y-m-d' }}</td>
+          <td><a href="{% url 'dashboard:scheduled_message_detail' m.id %}" class="btn-primary" style="padding:.3em .8em;font-size:.85em;width:auto;">Ver detalle</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="11" style="text-align:center;color:#666;">Sin mensajes programados aún.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para nuevo mensaje -->
+<div id="newMsgModal" style="display:none;position:fixed;z-index:1000;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.18);align-items:center;justify-content:center;">
+  <div class="modal-content">
+    <button id="closeNewMsgModal" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:1.5rem;color:#888;cursor:pointer;">&times;</button>
+    <h2 style="margin-top:0;margin-bottom:1.2rem;font-size:1.25rem;">➕ Nuevo Mensaje Programado</h2>
+    <div class="form-panel" style="background:transparent;border:none;padding:0;">
+    <form method="post" enctype="multipart/form-data" id="newMsgForm">{% csrf_token %}
+      {% if form.non_field_errors %}
+        <div style="background:#fee;border:1px solid #fcc;padding:.5rem;border-radius:4px;margin-bottom:1rem;color:#c00;font-size:.85rem;">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+      <div class="form-group">
+        <label for="{{ form.subject.id_for_label }}">Asunto*</label>
+        {{ form.subject }}
+        {% if form.subject.errors %}<small style="color:#dc2626;">{{ form.subject.errors|first }}</small>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.message_text.id_for_label }}">Texto del Mensaje*</label>
+        {{ form.message_text }}
+        {% if form.message_text.errors %}<small style="color:#dc2626;">{{ form.message_text.errors|first }}</small>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.start_datetime.id_for_label }}">Fecha y Hora de Inicio*</label>
+        {{ form.start_datetime }}
+        {% if form.start_datetime.errors %}<small style="color:#dc2626;">{{ form.start_datetime.errors|first }}</small>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.send_frequency.id_for_label }}">Frecuencia*</label>
+        {{ form.send_frequency }}
+        {% if form.send_frequency.errors %}<small style="color:#dc2626;">{{ form.send_frequency.errors|first }}</small>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.client_type.id_for_label }}">Tipo de Cliente*</label>
+        {{ form.client_type }}
+        {% if form.client_type.errors %}<small style="color:#dc2626;">{{ form.client_type.errors|first }}</small>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.image.id_for_label }}">Imagen (opcional)</label>
+        {{ form.image }}
+        {% if form.image.errors %}<small style="color:#dc2626;">{{ form.image.errors|first }}</small>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.video.id_for_label }}">Video (opcional)</label>
+        {{ form.video }}
+        {% if form.video.errors %}<small style="color:#dc2626;">{{ form.video.errors|first }}</small>{% endif %}
+      </div>
+      <button type="submit" class="btn-primary">✓ Crear Mensaje</button>
+    </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+$(document).ready(function(){
+  $('#scheduledMessagesTable').DataTable({
+    language:{url:'//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'},
+    pageLength:25,
+    order:[[2,'desc']]
+  });
+
+  // Modal logic
+  const $modal = $('#newMsgModal');
+  $('#openNewMsgModal').on('click', function(){
+    $modal.show();
+    setTimeout(()=>{
+      $modal.find('input,textarea,select').first().focus();
+    }, 100);
+  });
+  $('#closeNewMsgModal').on('click', function(){
+    $modal.hide();
+  });
+  // Cierra modal al hacer click fuera del contenido
+  $modal.on('click', function(e){
+    if(e.target === this) $modal.hide();
+  });
+});
+</script>
+{% endblock %}

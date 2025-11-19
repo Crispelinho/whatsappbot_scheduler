@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Operaria{% endblock %}
+{% block header_title %}Añadir Operaria{% endblock %}
+{% block header_subtitle %}Registrar nueva operaria y asignar tipos de servicio{% endblock %}
+{% block content %}
+<a href="{% url 'dashboard:operators_metrics' %}" style="text-decoration:none;font-size:.9rem;">← Volver a operarias</a>
+<div style="max-width:480px;margin:2em auto;background:#fff;padding:2em 2.5em;border-radius:10px;border:1px solid #e2e2e2;">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-group" style="margin-bottom:1.2em;">
+      <label for="id_name">Nombre</label>
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+    <div class="form-group" style="margin-bottom:1.2em;">
+      <label for="id_phone_number">Teléfono</label>
+      {{ form.phone_number }}
+      {{ form.phone_number.errors }}
+    </div>
+    <div class="form-group" style="margin-bottom:1.2em;">
+      <label for="id_commission_percentage">Comisión (%)</label>
+      {{ form.commission_percentage }}
+      {{ form.commission_percentage.errors }}
+    </div>
+    <div class="form-group" style="margin-bottom:1.2em;">
+      <label>Tipos de servicio</label>
+      {{ form.service_types }}
+      {{ form.service_types.errors }}
+    </div>
+    <button type="submit" class="btn-action" style="width:100%;padding:.7em 0;font-size:1.1em;">✓ Guardar operaria</button>
+  </form>
+</div>
+{% endblock %}

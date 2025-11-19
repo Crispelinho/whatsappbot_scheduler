@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Liquidador Semanal de Operarias{% endblock %}
+{% block header_title %}Liquidador Semanal de Operarias{% endblock %}
+{% block header_subtitle %}Pagos y liquidaciones por semana, mes y tipo de servicio{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<style>
+.table-small{width:100%;border-collapse:collapse;font-size:.95em}
+.table-small th,.table-small td{border:1px solid #e2e2e2;padding:.6em .8em;text-align:left}
+.table-small th{background:#f9f9f9}
+</style>
+{% endblock %}
+{% block content %}
+<a href="{% url 'dashboard:operators_metrics' %}" style="text-decoration:none;font-size:.9rem;">← Volver a operarias</a>
+<form method="get" style="margin:1.5em 0;display:flex;gap:1em;flex-wrap:wrap;align-items:end;">
+  <div>
+    <label for="week">Semana:</label>
+    <input type="number" name="week" id="week" value="{{ week|default:'' }}" min="1" max="53">
+  </div>
+  <div>
+    <label for="month">Mes:</label>
+    <input type="number" name="month" id="month" value="{{ month|default:'' }}" min="1" max="12">
+  </div>
+  <div>
+    <label for="year">Año:</label>
+    <input type="number" name="year" id="year" value="{{ year|default:'' }}" min="2020" max="2100">
+  </div>
+  <div>
+    <label for="service_type">Tipo de servicio:</label>
+    <select name="service_type" id="service_type">
+      <option value="">Todos</option>
+      {% for st in service_types %}
+        <option value="{{ st.id }}" {% if service_type == st.id|stringformat:"s" %}selected{% endif %}>{{ st.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="settled">Estado de pago:</label>
+    <select name="settled" id="settled">
+      <option value="">Todos</option>
+      <option value="1" {% if settled == '1' %}selected{% endif %}>Pagado</option>
+      <option value="0" {% if settled == '0' %}selected{% endif %}>Pendiente</option>
+    </select>
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+<table class="table-small" id="liquidatorTable">
+  <thead>
+    <tr>
+      <th>Operaria</th>
+      <th>Semana</th>
+      <th>Mes</th>
+      <th>Año</th>
+      <th>Tipo Servicio</th>
+      <th>Total Ventas</th>
+      <th>Total Pagado</th>
+      <th>Comisión (%)</th>
+      <th>Monto a Pagar</th>
+      <th>Pagado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td>{{ row.operator__name }}</td>
+      <td>{{ row.week }}</td>
+      <td>{{ row.month }}</td>
+      <td>{{ row.year }}</td>
+      <td>{{ row.service__service_type__name|default:'—' }}</td>
+      <td>{{ row.total_sales }}</td>
+      <td>{{ row.total_paid }}</td>
+      <td>{{ row.commission_percentage }}</td>
+      <td>{{ row.amount_to_pay }}</td>
+      <td>{% if row.settled %}<span style="color:#16a34a;font-weight:500;">Pagado</span>{% else %}<span style="color:#dc2626;font-weight:500;">Pendiente</span>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="10" style="text-align:center;color:#888;">Sin datos para los filtros seleccionados.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function(){
+  $('#liquidatorTable').DataTable({
+    language:{url:'//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'},
+    pageLength:25,
+    order:[[3,'desc'],[1,'desc']]
+  });
+});
+</script>
+{% endblock %}

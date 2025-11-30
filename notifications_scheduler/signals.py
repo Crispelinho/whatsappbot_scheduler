@@ -28,10 +28,8 @@ def generate_or_update_client_scheduled_messages(scheduled_message):
                     resp.save()
 
 @receiver(post_save, sender=ScheduledMessage)
-def scheduled_message_post_save(sender, instance, created, update_fields=None, **kwargs):
-    # Si el campo está activo y es nuevo o se ha actualizado el campo
+def scheduled_message_post_save(sender, instance, created, **kwargs):
+    # Si el campo está activo, siempre ejecutar el flujo
     if instance.auto_generate_client_scheduled_messages:
-        # Si es creación o si el campo fue actualizado
-        if created or (update_fields and 'auto_generate_client_scheduled_messages' in update_fields):
-            with transaction.atomic():
-                generate_or_update_client_scheduled_messages(instance)
+        with transaction.atomic():
+            generate_or_update_client_scheduled_messages(instance)

@@ -15,6 +15,15 @@
 <a href="{% url 'dashboard:operators_metrics' %}" style="text-decoration:none;font-size:.9rem;">← Volver a operarias</a>
 <form method="get" style="margin:1.5em 0;display:flex;gap:1em;flex-wrap:wrap;align-items:end;">
   <div>
+    <label for="operator_id">Operaria:</label>
+    <select name="operator_id" id="operator_id">
+      <option value="">Todas</option>
+      {% for op in operators_list %}
+        <option value="{{ op.id }}" {% if operator_id == op.id|stringformat:'s' %}selected{% endif %}>{{ op.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
     <label for="week">Semana:</label>
     <input type="number" name="week" id="week" value="{{ week|default:'' }}" min="1" max="53">
   </div>
@@ -77,6 +86,40 @@
     {% empty %}
     <tr><td colspan="10" style="text-align:center;color:#888;">Sin datos para los filtros seleccionados.</td></tr>
     {% endfor %}
+</tbody>
+</table>
+
+{% if operator_id and operator_obj %}
+<h3 style="margin-top:2em;">Desglose de servicios realizados por {{ operator_obj.name }}</h3>
+<table class="table-small" id="operatorServicesTable">
+  <thead>
+    <tr>
+      <th>Semana</th>
+      <th>Año</th>
+      <th>Servicio</th>
+      <th>Tipo Servicio</th>
+      <th>Total Servicios</th>
+      <th>Total Pagado</th>
+      <th>Monto a Pagar</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in operator_services %}
+    <tr>
+      <td>{{ s.week }}</td>
+      <td>{{ s.year }}</td>
+      <td>{{ s.service__name }}</td>
+      <td>{{ s.service__service_type__name }}</td>
+      <td>{{ s.total_servicios }}</td>
+      <td>{{ s.total_pagado }}</td>
+      <td>{{ s.monto_a_pagar }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" style="text-align:center;color:#888;">Sin servicios para los filtros seleccionados.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
   </tbody>
 </table>
 {% endblock %}

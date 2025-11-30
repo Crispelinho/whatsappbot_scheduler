@@ -9,7 +9,7 @@ from .models import ClientScheduledMessageImportErrorLog, ScheduledMessage, Clie
 class ScheduledMessageAdmin(ImportExportModelAdmin):
     list_display = (
         'id', 'subject', 'status', 'start_datetime', 
-        'send_frequency', 'recipient_count', 'auto_generate_client_scheduled_messages', 'created_at'
+        'send_frequency', 'recipient_count', 'auto_generate_client_scheduled_messages', 'force_pending_on_update', 'created_at'
     )
     list_filter = ('status', 'send_frequency', 'auto_generate_client_scheduled_messages')
     search_fields = ('subject', 'message_text')
@@ -17,7 +17,7 @@ class ScheduledMessageAdmin(ImportExportModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
     fields = (
         'subject', 'message_text', 'start_datetime', 'send_frequency', 'recipient_count',
-        'status', 'image', 'video', 'client_type', 'auto_generate_client_scheduled_messages', 'created_at', 'updated_at'
+        'status', 'image', 'video', 'client_type', 'auto_generate_client_scheduled_messages', 'force_pending_on_update', 'created_at', 'updated_at'
     )
 
 class ClientScheduledMessageResource(resources.ModelResource):
@@ -64,14 +64,14 @@ class ClientScheduledMessageResource(resources.ModelResource):
 @admin.register(ClientScheduledMessage)
 class ClientScheduledMessageAdmin(ImportExportModelAdmin):
     resource_class = ClientScheduledMessageResource
-    list_display = ('id', 'scheduled_message', 'client', 'retry_count', 'status_display', 'client__phone_format_error', 'sent_at', 'force_pending_on_update')
+    list_display = ('id', 'scheduled_message', 'client', 'retry_count', 'status_display', 'client__phone_format_error', 'sent_at')
     list_filter = ('response__status', 'scheduled_message', 'client__phone_format_error')
     search_fields = ('client__full_name', 'client__phone_number')
     ordering = ('-sent_at',)
     readonly_fields = ('created_at', 'updated_at')
     fields = (
         'scheduled_message', 'client', 'sent_at', 'retry_count', 'max_retries', 'last_retry_at',
-        'force_pending_on_update', 'created_at', 'updated_at'
+        'created_at', 'updated_at'
     )
 
     def get_queryset(self, request):

@@ -27,6 +27,7 @@ class OperatorLiquidatorView(View):
         year = request.GET.get("year")
         service_type = request.GET.get("service_type")
         settled = request.GET.get("settled")
+        operator_id = request.GET.get("operator_id")
 
         filters = {}
         if week:
@@ -39,11 +40,13 @@ class OperatorLiquidatorView(View):
             filters["settled"] = bool(int(settled))
         if service_type:
             filters["service__service_type__id"] = service_type
+        if operator_id:
+            filters["operator__id"] = operator_id
 
         qs = SaleRecord.objects.select_related("operator", "service", "service__service_type").filter(**filters)
         rows = (
             qs.values(
-                "operator__name", "week", "month", "year", "service__service_type__name",
+                "operator__id", "operator__name", "week", "month", "year", "service__service_type__name",
                 "operator__commission_percentage", "settled"
             )
             .annotate(
@@ -59,13 +62,48 @@ class OperatorLiquidatorView(View):
             try:
                 if val is None:
                     return "$0.00"
-                return f"${{float(val):,.2f}}"
+                return f'$'+format(float(val), ',.2f')
             except (ValueError, TypeError):
                 return "$0.00"
         for row in rows:
             row["total_paid"] = fmt_currency(row["total_paid"])
             row["amount_to_pay"] = fmt_currency(row["amount_to_pay"])
+
+        # Si se filtra por operaria, mostrar desglose de servicios por semana
+        operator_services = []
+        operator_obj = None
+        if operator_id:
+            try:
+                operator_obj = Operator.objects.get(id=operator_id)
+            except Operator.DoesNotExist:
+                operator_obj = None
+            # Desglose por semana y servicio
+            base_qs = SaleRecord.objects.filter(operator__id=operator_id)
+            if week:
+                base_qs = base_qs.filter(week=week)
+            if month:
+                base_qs = base_qs.filter(month=month)
+            if year:
+                base_qs = base_qs.filter(year=year)
+            if service_type:
+                base_qs = base_qs.filter(service__service_type__id=service_type)
+            if settled in ("0", "1"):
+                base_qs = base_qs.filter(settled=bool(int(settled)))
+            operator_services = (
+                base_qs.values("week", "year", "service__name", "service__service_type__name")
+                .annotate(
+                    total_servicios=Count("id"),
+                    total_pagado=Sum("total_paid"),
+                    monto_a_pagar=Sum("amount_to_pay")
+                )
+                .order_by("-year", "-week", "service__name")
+            )
+            for s in operator_services:
+                s["total_pagado"] = fmt_currency(s["total_pagado"])
+                s["monto_a_pagar"] = fmt_currency(s["monto_a_pagar"])
+
         service_types = ServiceType.objects.all()
+        operators_list = Operator.objects.all().order_by('name')
         return render(request, self.template_name, {
             "rows": rows,
             "week": week,
@@ -74,6 +112,10 @@ class OperatorLiquidatorView(View):
             "service_type": service_type,
             "settled": settled,
             "service_types": service_types,
+            "operator_id": operator_id,
+            "operator_obj": operator_obj,
+            "operator_services": operator_services,
+            "operators_list": operators_list,
         })
 
 class OperatorCreateView(View):
@@ -113,7 +155,7 @@ class OperatorDetailView(View):
                         .order_by("-count")[:10])
         def fmt_currency(val):
             try:
-                return f"${{float(val):,.2f}}" if val is not None else "$0.00"
+                return f'$'+format(float(val), ',.2f') if val is not None else "$0.00"
             except (ValueError, TypeError):
                 return "$0.00"
         context = {
@@ -146,7 +188,7 @@ class OperatorsMetricsView(View):
             try:
                 if val is None:
                     return "$0.00"
-                return f"${{float(val):,.2f}}"
+                return f'$'+format(float(val), ',.2f')
             except (ValueError, TypeError):
                 return "$0.00"
         for op in operators:

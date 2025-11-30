@@ -32,6 +32,12 @@
         <a href="{% url 'dashboard:scheduled_messages' %}" class="{% if request.resolver_match.url_name == 'scheduled_messages' %}active{% endif %}">
             Mensajes Programados
         </a>
+        <a href="{% url 'dashboard:operators_metrics' %}" class="{% if request.resolver_match.url_name == 'operators_metrics' %}active{% endif %}">
+            Operarias y métricas
+        </a>
+        <a href="{% url 'dashboard:operator_liquidator' %}" class="{% if request.resolver_match.url_name == 'operator_liquidator' %}active{% endif %}">
+            Liquidador semanal
+        </a>
 
         <!-- Agrega más enlaces según tus apps -->
     </div>

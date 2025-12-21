@@ -1,20 +1,50 @@
+from django.db.models import Q
 from .forms import OperatorForm
-# Vista para crear nueva operaria
-
-from sales.models import Operator
+from sales.models import Operator, SaleRecord, Service, ServiceType
 from django.views import View
-# Create your views here.
-from django.shortcuts import render
-from django.views import View
-from django.db.models import Count, Sum, Max
+from django.shortcuts import render, redirect
+from django.db.models import Count, Sum, Max, Q
 from django.utils import timezone
 from django.http import HttpResponse
 from datetime import datetime
 from notifications_scheduler.models import ScheduledMessage, MessageResponse, ClientScheduledMessage
-from sales.models import SaleRecord, Service, ServiceType
 from django.forms import ModelForm, DateTimeInput, Textarea, TextInput, Select, FileInput, ClearableFileInput
-from django.db.models import Count, Q
-from django.shortcuts import redirect
+
+# Vista de detalle de todas las ventas con filtros avanzados
+class SalesDetailView(View):
+    template_name = "dashboard/sales_detail.html"
+
+    def get(self, request):
+        operator_id = request.GET.get("operator_id")
+        service_type = request.GET.get("service_type")
+        week = request.GET.get("week")
+        month = request.GET.get("month")
+        year = request.GET.get("year")
+
+        filters = Q()
+        if operator_id:
+            filters &= Q(operator__id=operator_id)
+        if service_type:
+            filters &= Q(service__service_type__id=service_type)
+        if week:
+            filters &= Q(week=week)
+        if month:
+            filters &= Q(month=month)
+        if year:
+            filters &= Q(year=year)
+
+        sales = SaleRecord.objects.select_related(
+            "client", "service", "service__service_type", "operator"
+        ).filter(filters).order_by("-date")
+
+        operators_list = Operator.objects.all().order_by('name')
+        service_types = ServiceType.objects.all().order_by('name')
+
+        return render(request, self.template_name, {
+            "sales": sales,
+            "operators_list": operators_list,
+            "service_types": service_types,
+        })
 
 # Vista de liquidador semanal de operarias
 class OperatorLiquidatorView(View):

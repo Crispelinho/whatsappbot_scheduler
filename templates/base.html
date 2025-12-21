@@ -26,8 +26,12 @@
             class="{% if request.resolver_match.url_name == 'sale_pre_import' %}active{% endif %}">
             Importar Ventas 2025
         </a>
+
         <a href="{% url 'dashboard:clients_metrics' %}" class="{% if request.resolver_match.url_name == 'clients_metrics' %}active{% endif %}">
             Métricas Clientes
+        </a>
+        <a href="{% url 'dashboard:sales_detail' %}" class="{% if request.resolver_match.url_name == 'sales_detail' %}active{% endif %}">
+            Detalle de Ventas
         </a>
         <a href="{% url 'dashboard:scheduled_messages' %}" class="{% if request.resolver_match.url_name == 'scheduled_messages' %}active{% endif %}">
             Mensajes Programados

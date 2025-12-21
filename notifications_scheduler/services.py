@@ -1,6 +1,7 @@
 from django.utils import timezone
 from .models import ClientScheduledMessage, ResponseCode, MessageResponse, ResponseCode
 from .senders.base import SocialNetworkSenderInterface
+from notifications_scheduler.exceptions.whatsapp import WhatsAppSessionException
 
 def send_message_to_client(client_msg: ClientScheduledMessage, social_network_sender: SocialNetworkSenderInterface) -> None:
     area_code = client_msg.client.area_code or ""
@@ -25,6 +26,12 @@ def send_message_to_client(client_msg: ClientScheduledMessage, social_network_se
             msg_response.response_code = message_send_result.error_code
             msg_response.description = message_send_result.message    
             print(f"Failed to send message to {phone}: {msg_response.response_code}")
+
+    except WhatsAppSessionException as e:
+        msg_response.status = MessageResponse.Status.FAILED
+        msg_response.response_code = ResponseCode.WHATSAPP_SESSION_CRASHED.value
+        msg_response.description = f"Sesión de WhatsApp Web inválida: {e}"
+        print(f"WhatsApp session error sending message to {phone}: {e}")
 
     except Exception as e:
         msg_response.status = MessageResponse.Status.FAILED

@@ -146,18 +146,20 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         return True, None
     
     def _upload_file(self, file_path: str) -> tuple[bool, MessageSendResult]:
-        """Carga un archivo en el input de archivos."""
+        """Carga un archivo en el input de archivos, forzando visibilidad para evitar el diálogo del sistema."""
         try:
             input_file = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, xpaths.FILE_INPUT))
             )
+            # Forzar visibilidad del input file con JS
+            self.driver.execute_script("arguments[0].style.display = 'block'; arguments[0].style.visibility = 'visible';", input_file)
             input_file.send_keys(file_path)
             return True, None
-        except Exception:
+        except Exception as e:
             return False, MessageSendResult(
                 success=False,
-                error_code=ResponseCode.EXCEPTION.value,
-                message=self._debug_log("file_upload", Exception("Error uploading file"))
+                error_code=ResponseCode.UPLOAD_MEDIA_FAILED.value,
+                message=self._debug_log("file_upload", e)
             )
 
     def _attach_and_send_file(self, file_path: str) -> tuple[bool, MessageSendResult]:
@@ -166,6 +168,13 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         # Paso 1: Buscar botón de adjuntar y hacer click
         success_btn_attach_click, msg_send_result = self._find_button_and_click(By.XPATH, xpaths.ATTACH_BUTTON, times.DEFAULT_TIMEOUT)
         if not success_btn_attach_click:
+            return False, msg_send_result
+
+        time.sleep(1)
+
+        # Paso 1.5: Hacer click en botón de 'Fotos y videos'
+        success_btn_fotos_click, msg_send_result = self._find_button_and_click(By.XPATH, xpaths.ATTACH_MEDIA, times.DEFAULT_TIMEOUT)
+        if not success_btn_fotos_click:
             return False, msg_send_result
 
         time.sleep(1)

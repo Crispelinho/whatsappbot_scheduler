@@ -3,7 +3,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 from clients.models import Client
 from sales.models import Service, Operator
-from .models import Appointment
+from .models import Appointment, StatusAppointment
 
 def get_gsheets_client() -> gspread.Client:
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -47,7 +47,18 @@ def import_create_appointment(row, counters: dict) -> (bool, str | None):
             scheduled_datetime = datetime.strptime(dt_str, "%d/%m/%Y %H:%M")
         except Exception:
             scheduled_datetime = datetime.strptime(fecha_raw, "%d/%m/%Y")
-        appointment, _ = Appointment.objects.get_or_create(
+        # Mapear estado en español a código interno
+        status_map = {tag.value[1]: tag.value[0] for tag in StatusAppointment}
+        estado_excel = row.get("Estado", "").strip()
+        status_appointment = status_map.get(estado_excel, "SCHEDULED")
+        # Validar que el status sea uno de los códigos válidos
+        valid_statuses = set(status_map.values())
+        if status_appointment not in valid_statuses:
+            print(f"⚠️ Estado '{estado_excel}' no reconocido, usando 'SCHEDULED'.")
+            status_appointment = "SCHEDULED"
+        # Log para depuración
+        print(f"Importando cita: cliente={client_name}, servicio={service_name}, fecha={fecha_raw}, status={status_appointment}")
+        appointment, _ = Appointment.objects.update_or_create(
             client=client,
             service=service,
             scheduled_datetime=scheduled_datetime,
@@ -55,7 +66,7 @@ def import_create_appointment(row, counters: dict) -> (bool, str | None):
                 'operator': operator,
                 'duration_minutes': 60,
                 'notes': '',
-                'status': 'scheduled',
+                'status': status_appointment,
             }
         )
         counters["exitos"] += 1

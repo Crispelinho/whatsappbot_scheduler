@@ -21,6 +21,14 @@ class ResponseCode(Enum):
     UPLOAD_MEDIA_FAILED = "UPLOAD_MEDIA_FAILED"
     EXCEPTION = "EXCEPTION"
 
+class ScheduledMessageType(Enum):
+    PROMOTIONAL = "PROMOTIONAL", "Promocional"
+    REMINDER = "REMINDER", "Recordatorio"
+    ALERT = "ALERT", "Alerta"
+    FOLLOWUP = "FOLLOWUP", "Seguimiento"
+    BIRTHDAY = "BIRTHDAY", "Cumpleaños"
+    CUSTOM = "CUSTOM", "Personalizado"
+
 class ScheduledMessage(models.Model):
     auto_generate_client_scheduled_messages = models.BooleanField(
         default=False,
@@ -34,6 +42,17 @@ class ScheduledMessage(models.Model):
     )
     subject = models.CharField("Subject", max_length=255)
     message_text = models.TextField("Message Text")
+    replace_text_message_variables = models.BooleanField(
+        "Replace Text Message Variables",
+        default=False,
+        help_text="Si está activo, se reemplazarán las variables en el texto del mensaje antes de enviarlo."
+    )
+    scheduled_message_type = models.CharField(
+        "Scheduled Message Type",
+        max_length=20,
+        choices=[(e.value[0], e.value[1]) for e in ScheduledMessageType],
+        default=ScheduledMessageType.CUSTOM.value[0]
+    )
     start_datetime = models.DateTimeField("Start Date and Time", default=timezone.now)
     send_frequency = models.CharField(
         "Send Frequency",
@@ -94,6 +113,19 @@ class ScheduledMessage(models.Model):
 
     def __str__(self):
         return f"{self.subject} ({self.status})"
+    
+    def render_message(self, context: dict) -> str:
+        """
+        Renderiza el texto del mensaje usando las variables del contexto proporcionado.
+        Si replace_text_message_variables está activo, reemplaza las variables en el texto.
+        """
+        if not self.replace_text_message_variables or not context:
+            return self.message_text
+        try:
+            return self.message_text.format(**context)
+        except Exception as e:
+            # Si hay error de formato, regresa el texto original y opcionalmente loguea el error
+            return self.message_text
 
 class MessageResponse(models.Model):
     class Status(models.TextChoices):

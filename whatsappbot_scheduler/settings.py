@@ -148,11 +148,14 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'notifications_scheduler.tasks.send_scheduled_messages_task',
         'schedule': crontab(),  # cada minuto
     },
-    "retry-failed-messages-every-10min": {
-        "task": "notifications_scheduler.tasks.retry_failed_messages",
-        "schedule": crontab(minute="*/10"),  # cada 10 minutos
-    },
 }
+
+# Retry task: off by default, enable with ENABLE_RETRY_TASK=true
+if os.getenv('ENABLE_RETRY_TASK', 'false').lower() in ('1', 'true', 'yes'):
+    CELERY_BEAT_SCHEDULE['retry-failed-messages-every-10min'] = {
+        'task': 'notifications_scheduler.tasks.retry_failed_messages',
+        'schedule': crontab(minute='*/10'),  # cada 10 minutos
+    }
 
 # Import-Export Configuration
 IMPORT_EXPORT_USE_TRANSACTIONS = True
@@ -165,6 +168,11 @@ IMPORT_EXPORT_FORMATS = [CSV, XLSX]
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'static_root'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Media files (user-uploaded)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

@@ -105,24 +105,37 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
 
 @admin.register(MessageResponse)
 class MessageResponseAdmin(ImportExportModelAdmin):
-    list_display = ('id', 'client_message__scheduled_message', 'client_message__client', 'status', 'response_code', 'description', 'created_at', 'updated_at')
+    list_display = (
+        'id',
+        'client_message__scheduled_message',
+        'client_message__client',
+        'status',
+        'response_code',
+        'description',
+        'created_at',
+        'updated_at',
+    )
     list_filter = ('status', 'response_code', 'client_message__scheduled_message')
     search_fields = (
         'client_message__scheduled_message__subject',
         'client_message__scheduled_message__message_text',
         'client_message__client__full_name',
-        'client_message__client__phone_number'
+        'client_message__client__phone_number',
     )
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.select_related('client_message__client')
+        # OPTIMIZACIÓN: incluir todas las relaciones ForeignKey usadas en list_display y search_fields
+        return qs.select_related(
+            'client_message__client',
+            'client_message__scheduled_message',
+        )
 
-    # def client_name(self, obj):
-    #     return getattr(getattr(getattr(obj, 'client_message', None), 'client', None), 'full_name', None)
-    # client_name.short_description = "Client"
+    # Si hay relaciones ManyToMany en el futuro, usar prefetch_related
+
+    # Si la tabla sigue siendo lenta, limitar list_display y search_fields a lo esencial
 
 @admin.register(ClientScheduledMessageImportErrorLog)
 class ImportErrorLogAdmin(admin.ModelAdmin):

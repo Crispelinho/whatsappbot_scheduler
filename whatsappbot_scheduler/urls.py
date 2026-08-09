@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import include, path
 from sales.views import dashboard_view
 
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('', dashboard_view, name='dashboard'),
@@ -27,4 +29,8 @@ urlpatterns = [
     path('sales/', include('sales.urls')),
     path('appointments/', include('appointments.urls')),
 ]
+
+# Sirve archivos de media en desarrollo
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

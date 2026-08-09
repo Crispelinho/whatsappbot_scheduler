@@ -80,21 +80,24 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
 
         return options
     
-    def _open_whatsapp_and_wait(self, driver: webdriver.Chrome, timeout: int = 300):
-        """Abre WhatsApp Web y espera a que cargue la caja de texto."""
+    def _open_whatsapp_and_wait(self, driver: webdriver.Chrome, timeout: int = 20):
+        """Abre WhatsApp Web y espera a que cargue la interfaz principal (no necesariamente un chat)."""
         driver.get(whatsapp.URL_WHATSAPP_WEB)
         try:
+            # Espera a que cargue el panel lateral de chats o el logo de WhatsApp Web
             WebDriverWait(driver, timeout).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='textbox']"))
+                EC.presence_of_element_located((By.CSS_SELECTOR, "header, .two, ._3Nsgw, ._3y5oW, ._1XkO3"))
             )
         except Exception as e:
+            self._debug_log("whatsapp_web_load_fail", e)
             driver.quit()
             raise RuntimeError(f"Could not log in to WhatsApp Web: {e}")
 
-    def _debug_log(self, context: str, error: Exception | None = None, selector: str = None) -> str:
+    def _debug_log(self, context: str, error: Exception | None = None, selector: str = None, extra: dict = None) -> str:
         """
-        Guarda HTML y screenshot en carpeta debug/ y retorna un log con rutas.
+        Guarda HTML y screenshot en carpeta debug/ y retorna un log con rutas y contexto extendido.
         context: Descripción breve del punto donde falló (ej: 'chat_load', 'file_upload')
+        extra: dict opcional con datos adicionales (por ejemplo, número, mensaje, etc)
         """
         os.makedirs("debug", exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -108,13 +111,16 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         except Exception as e:
             return f"[DEBUG_LOG_ERROR] No se pudo guardar debug para {context}: {e}"
 
-
         msg = f"[DEBUG] Context: {context}"
         if selector:
             msg += f" | Selector: {selector}"
         msg += f" | HTML: {html_path} | Screenshot: {img_path}"
         if error:
             msg += f" | Exception: {repr(error)}\n{traceback.format_exc()}"
+        if extra:
+            for k, v in extra.items():
+                msg += f" | {k}: {v}"
+        print(msg)
         return msg
 
     def _wait_for_element(self, by, selector, timeout=20) -> tuple[bool, WebElement, str| None]:
@@ -177,7 +183,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         if not success_btn_fotos_click:
             return False, msg_send_result
 
-        time.sleep(1)
+        time.sleep(3)
 
         # Paso 2: Cargar archivo en input de archivos
         success_file_upload, msg_send_result = self._upload_file(file_path)
@@ -284,7 +290,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
                     return MessageSendResult(
                         success=False,
                         error_code=ResponseCode.NO_INPUT_BOX.value,
-                        message=self._debug_log("no_input_box", Exception("Could not find input box"))
+                        message=self._debug_log("no_input_box", Exception("Could not find input box"), extra={"phone_number": phone_number, "message": message})
                     )
             message_sucess_send_result = "Message sent successfully"
             # Adjuntar archivos si existen
@@ -297,16 +303,16 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
 
             return MessageSendResult(success=True, message=message_sucess_send_result)
 
-        except TimeoutException:
+        except TimeoutException as te:
             return MessageSendResult(
                 success=False,
                 error_code=ResponseCode.TIMEOUT.value,
-                message=self._debug_log("send_message_chat_load", TimeoutException("Chat did not load in time"))
+                message=self._debug_log("send_message_chat_load", TimeoutException("Chat did not load in time"), extra={"phone_number": phone_number, "message": message, "image_path": image_path, "video_path": video_path})
             )
 
         except Exception as e:
             return MessageSendResult(
                 success=False,
                 error_code=ResponseCode.EXCEPTION.value,
-                message=self._debug_log("send_message_exception", e)
+                message=self._debug_log("send_message_exception", e, extra={"phone_number": phone_number, "message": message, "image_path": image_path, "video_path": video_path})
             )

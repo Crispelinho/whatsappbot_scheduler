@@ -31,12 +31,15 @@ def process_failed_message(msg):
     msg.last_retry_at = timezone.now()
     msg.save(update_fields=["retry_count", "last_retry_at"])
 
-    success, message_send_result = WhatsAppSeleniumSender.send_message(
+
+    sender = WhatsAppSeleniumSender()
+    message_send_result = sender.send_message(
         msg.client.phone_number,
         msg.scheduled_message.message_text,
         msg.scheduled_message.image.path if msg.scheduled_message.image else None,
         msg.scheduled_message.video.path if msg.scheduled_message.video else None
     )
+    success = message_send_result.success
 
     update_message_status(msg.response, success, message_send_result)
     msg.save()
@@ -52,7 +55,6 @@ def retry_failed_messages():
 
     for msg in failed_messages:
         if msg.can_retry:
-            # Aquí llamamos a tu función de reenvío / procesamiento
             process_failed_message(msg)
         else:
             print(f"Message {msg.id} cannot be retried due to max retries or non-retryable error.")

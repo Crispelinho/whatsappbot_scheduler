@@ -28,6 +28,7 @@ class Client(models.Model):
         PROSPECT = "prospect", "Prospect"
         CONSOLIDATED = "consolidated", "Consolidated"
         INACTIVE = "inactive", "Inactiv"  # opcional, si quieres manejar clientes caídos
+        IMPORTED = "imported", "Imported"  # opcional, para clientes importados masivamente
         VIP = "vip", "VIP"  # opcional, clientes especiales
     
     full_name = models.CharField(max_length=100, default=generate_unknown_name)
@@ -50,6 +51,7 @@ class Client(models.Model):
     )
     phone_format_error = models.CharField(max_length=20, choices=PhoneFormatError.choices, default=PhoneFormatError.VALID)
     primary_phone_match = models.BooleanField(default=True)
+    # allow_notifications = models.BooleanField(default=True)
 
     # class Meta:
     #     constraints = [

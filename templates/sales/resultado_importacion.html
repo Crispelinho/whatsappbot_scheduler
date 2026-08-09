@@ -1,0 +1,55 @@
+<!-- templates/sales/resultado_importacion.html -->
+{% extends "base.html" %}
+
+{% block title %}Resultado de Importación{% endblock %}
+{% block header_title %}Importación desde Google Sheets{% endblock %}
+{% block header_subtitle %}Resumen de registros procesados{% endblock %}
+
+{% block content %}
+<h2>Resultado de la importación</h2>
+
+<div style="margin-bottom:1em;padding:1em;background:#eef;border-radius:5px;">
+    <strong>Resumen:</strong><br>
+    ✔️ Éxitos: {{ counters.exitos }} <br>
+    ❌ Fallos: {{ counters.fallos }} <br>
+    🔢 Errores de decimal: {{ counters.invalid_operations }} <br>
+    🔢 Errores de valor: {{ counters.value_errors }}
+</div>
+
+<table id="tabla-resultado" class="display nowrap" style="width:100%;">
+    <thead>
+        <tr>
+            {% for key in rows.0.keys %}
+                <th>{{ key }}</th>
+            {% endfor %}
+            <th>Error</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            {% for val in row.values %}
+                <td>{{ val }}</td>
+            {% endfor %}
+        <td style="color: {% if row.Error %} red {% else %} green {% endif %};">
+            {{ row.Error|default:"✔️ Importado correctamente" }}
+        </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#tabla-resultado').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            pageLength: 25,
+            responsive: true
+        });
+    });
+</script>
+{% endblock %}

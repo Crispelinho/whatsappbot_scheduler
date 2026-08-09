@@ -208,4 +208,20 @@ __marimo__/
 
 chrome_selenium_driver/
 chrome_selenium_profile/*
+
+.idea/
+.vscode/
+compare_and_export_missing_keys.py
+missing_keys_en.txt
+missing_keys_es.txt
+missing_keys_HK.txt
+missing_keys_pl.txt
+.idea/dataSources/ea4833af-d611-4033-a79c-b283ad4acf12/storage_v2/_src_/schema/main.uQUzAA.meta
+sqlite.py
+31_08_2025.sqlite3
+debug/*
+
+
+*.json
+credentials/*
 debug/

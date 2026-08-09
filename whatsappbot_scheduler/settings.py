@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 from celery.schedules import crontab
 from import_export.formats.base_formats import CSV, XLSX
@@ -17,6 +18,8 @@ from import_export.formats.base_formats import CSV, XLSX
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Root directory for credentials
+GOOGLE_SHEETS_CREDENTIALS_FILE = os.path.join(BASE_DIR, "credentials", "google-sheets.json")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -47,6 +50,7 @@ INSTALLED_APPS = [
     'dashboard',
     'django_celery_beat',
     'django_bootstrap_icons',
+    'gsheets_import',
 ]
 
 MIDDLEWARE = [
@@ -64,7 +68,7 @@ ROOT_URLCONF = 'whatsappbot_scheduler.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -152,7 +156,16 @@ IMPORT_EXPORT_FORMATS = [CSV, XLSX]
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # si tienes una carpeta global de estáticos
+]
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Google Sheets Import Configuration
+GSHEETS_IMPORT_API_KEY = 'AQ.Ab8RN6K2vORfNSHLMybyXOIlU5JL_HPLyH6wEhe-dXhSH0iXDQ' 
+GSHEETS_IMPORT_CLIENT_ID = '805522274833-fid0f1e3hej534lf2jtsk4a2k39s8jno.apps.googleusercontent.com' 
+GSHEETS_IMPORT_APP_ID = '805522274833'

@@ -1,0 +1,23 @@
+<!-- templates/sales/loading.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'sales/loading.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<div style="text-align:center; padding:4em;">
+    <h2>Cargando datos desde Google Sheets...</h2>
+    <p>Esto puede tardar unos segundos ⏳</p>
+    <div class="spinner" style="margin-top:2em;">
+    </div>
+</div>
+
+<script>
+    setTimeout(function() {
+        window.location.href = "{% url 'sales:sale_pre_import' %}?loading=false";
+    }, 100); // puedes ajustar el tiempo si necesitas mostrar el spinner más tiempo
+</script>
+{% endblock %}

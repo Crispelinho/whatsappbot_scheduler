@@ -110,7 +110,6 @@ class PhoneNumberErrorClientsView(View):
 class PhoneNumberErrorPhonesView(View):
     template_name = 'clients/phone_number_errors_phones.html'
 
-
     def get(self, request):
         phone_error_filter = request.GET.get('phone_error')
         phone_search = request.GET.get('phone_search', '').strip()

@@ -1,5 +1,5 @@
 from django.utils import timezone
-from .models import ClientScheduledMessage, ErrorType, MessageResponse, ResponseCode
+from .models import ClientScheduledMessage, ResponseCode, MessageResponse, ResponseCode
 from .senders.base import SocialNetworkSenderInterface
 
 def send_message_to_client(client_msg: ClientScheduledMessage, social_network_sender: SocialNetworkSenderInterface) -> None:
@@ -11,35 +11,25 @@ def send_message_to_client(client_msg: ClientScheduledMessage, social_network_se
     image = client_msg.scheduled_message.image.path if client_msg.scheduled_message.image else None
     video = client_msg.scheduled_message.video.path if client_msg.scheduled_message.video else None
 
-    msg_response = MessageResponse(
-        client_message=client_msg,
-        status=MessageResponse.Status.PENDING,
-        error_type=None,
-    )
-
+    msg_response, _ = MessageResponse.objects.get_or_create(client_message=client_msg)
+    
     try:
-        result = social_network_sender.send_message(area_code, phone, text, image, video)
-        if result.success:
+        message_send_result = social_network_sender.send_message(phone, text, image, video)
+        if message_send_result.success:
             msg_response.status = MessageResponse.Status.SENT
-            msg_response.error_type = None
+            msg_response.response_code = ResponseCode.SUCCESS.value
+            msg_response.description = message_send_result.message or "Sent successfully"
             client_msg.sent_at = timezone.now()
         else:
             msg_response.status = MessageResponse.Status.FAILED
-            error_enum = result.error_code if result.error_code in ResponseCode._value2member_map_ else ResponseCode.UNKNOWN
-            error = ErrorType.objects.filter(code=error_enum.value).first()
-            if not error:
-                error, _ = ErrorType.objects.get_or_create(
-                    code=ResponseCode.UNKNOWN.value, defaults={"name": "Unknown Error", "description": result.message}
-                )
-            msg_response.error_type = error
-            print(f"Failed to send message to {area_code} {phone}: {result.message}")
+            msg_response.response_code = message_send_result.error_code
+            msg_response.description = message_send_result.message    
+            print(f"Failed to send message to {phone}: {msg_response.response_code}")
 
     except Exception as e:
         msg_response.status = MessageResponse.Status.FAILED
-        error = ErrorType.objects.get_or_create(
-            code=ResponseCode.EXCEPTION.value, defaults={"name": "Unhandled Exception", "description": str(e)}
-        )[0]
-        msg_response.error_type = error
+        msg_response.response_code = ResponseCode.EXCEPTION.value
+        msg_response.description = str(e)
         print(f"Exception sending message to {phone}: {e}")
     msg_response.save()
     client_msg.save()

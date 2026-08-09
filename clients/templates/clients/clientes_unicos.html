@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Clientes únicos para importar</h2>
+<p>Total de clientes únicos: {{ rows|length }}</p>
+<table id="tabla-clientes" class="display nowrap" style="width:100%;">
+    <thead>
+        <tr>
+            {% for key in rows.0.keys %}
+                <th>{{ key }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            {% for val in row.values %}
+                <td>{{ val }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#tabla-clientes').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            pageLength: 25,
+            responsive: true
+        });
+    });
+</script>
+{% endblock %}

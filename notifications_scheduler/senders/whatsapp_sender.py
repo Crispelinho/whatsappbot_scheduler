@@ -1,3 +1,4 @@
+from notifications_scheduler.exceptions.whatsapp import WhatsAppSessionException
 from datetime import datetime
 import os
 import time
@@ -47,6 +48,16 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         if self.use_shared_driver:
             WhatsAppSeleniumSender._driver = driver
         return driver
+
+    def _check_session(self):
+        """Lanza WhatsAppSessionException si la sesión de Selenium no es válida."""
+        try:
+            # Esto lanza excepción si la sesión no es válida
+            _ = self.driver.current_url
+        except Exception as e:
+            if 'invalid session id' in str(e).lower():
+                raise WhatsAppSessionException("Sesión de Selenium/WhatsApp Web inválida o cerrada.") from e
+            raise
 
     def _create_driver_with_profile(self) -> webdriver.Chrome:
         """Crea un ChromeDriver con perfil persistente."""
@@ -171,7 +182,7 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         if not success_btn_send_click:
             return False, msg_send_result
         
-        time.sleep(1)
+        time.sleep(3)
 
         return True, None
 
@@ -219,6 +230,8 @@ class WhatsAppSeleniumSender(SocialNetworkSenderInterface):
         Envía mensaje por WhatsApp Web.
         Retorna un MessageSendResult con estado, error y mensaje.
         """
+        # Verificar sesión válida antes de operar
+        self._check_session()
         # Validar número de teléfono
         if not phone_number:
             return MessageSendResult(

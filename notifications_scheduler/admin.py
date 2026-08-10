@@ -9,12 +9,16 @@ from .models import ClientScheduledMessageImportErrorLog, ScheduledMessage, Clie
 class ScheduledMessageAdmin(ImportExportModelAdmin):
     list_display = (
         'id', 'subject', 'status', 'start_datetime', 
-        'send_frequency', 'recipient_count', 'created_at'
+        'send_frequency', 'recipient_count', 'auto_generate_client_scheduled_messages', 'force_pending_on_update', 'created_at'
     )
-    list_filter = ('status', 'send_frequency')
+    list_filter = ('status', 'send_frequency', 'auto_generate_client_scheduled_messages')
     search_fields = ('subject', 'message_text')
     ordering = ('-start_datetime',)
     readonly_fields = ('created_at', 'updated_at')
+    fields = (
+        'subject', 'message_text', 'start_datetime', 'send_frequency', 'recipient_count',
+        'status', 'image', 'video', 'client_type', 'auto_generate_client_scheduled_messages', 'force_pending_on_update', 'created_at', 'updated_at'
+    )
 
 class ClientScheduledMessageResource(resources.ModelResource):
 
@@ -65,6 +69,10 @@ class ClientScheduledMessageAdmin(ImportExportModelAdmin):
     search_fields = ('client__full_name', 'client__phone_number')
     ordering = ('-sent_at',)
     readonly_fields = ('created_at', 'updated_at')
+    fields = (
+        'scheduled_message', 'client', 'sent_at', 'retry_count', 'max_retries', 'last_retry_at',
+        'created_at', 'updated_at'
+    )
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

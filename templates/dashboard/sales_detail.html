@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Ventas - Detalle{% endblock %}
+{% block header_title %}Detalle de Ventas{% endblock %}
+{% block header_subtitle %}Todas las ventas con filtros avanzados{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<style>
+.table-small{width:100%;border-collapse:collapse;font-size:.95em}
+.table-small th,.table-small td{border:1px solid #e2e2e2;padding:.6em .8em;text-align:left}
+.table-small th{background:#f9f9f9}
+</style>
+{% endblock %}
+{% block content %}
+<h2>Ventas - Detalle</h2>
+<form method="get" style="margin:1.5em 0;display:flex;gap:1em;flex-wrap:wrap;align-items:end;">
+  <div>
+    <label for="operator_id">Operaria:</label>
+    <select name="operator_id" id="operator_id">
+      <option value="">Todas</option>
+      {% for op in operators_list %}
+        <option value="{{ op.id }}" {% if request.GET.operator_id == op.id|stringformat:'s' %}selected{% endif %}>{{ op.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="service_type">Tipo Servicio:</label>
+    <select name="service_type" id="service_type">
+      <option value="">Todos</option>
+      {% for st in service_types %}
+        <option value="{{ st.id }}" {% if request.GET.service_type == st.id|stringformat:'s' %}selected{% endif %}>{{ st.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="week">Semana:</label>
+    <input type="number" name="week" id="week" value="{{ request.GET.week|default:'' }}" min="1" max="53">
+  </div>
+  <div>
+    <label for="month">Mes:</label>
+    <input type="number" name="month" id="month" value="{{ request.GET.month|default:'' }}" min="1" max="12">
+  </div>
+  <div>
+    <label for="year">Año:</label>
+    <input type="number" name="year" id="year" value="{{ request.GET.year|default:'' }}" min="2020" max="2100">
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+<table class="table-small" id="salesTable">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Semana</th>
+      <th>Mes</th>
+      <th>Año</th>
+      <th>Cliente</th>
+      <th>Servicio</th>
+      <th>Tipo Servicio</th>
+      <th>Operaria</th>
+      <th>Cantidad</th>
+      <th>Precio Servicio</th>
+      <th>Descuento Servicio</th>
+      <th>Descuento Salón</th>
+      <th>Total Servicio</th>
+      <th>Total Pagado</th>
+      <th>Método Pago</th>
+      <th>Comisión (%)</th>
+      <th>Monto a Pagar</th>
+      <th>Pagado</th>
+      <th>Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for sale in sales %}
+    <tr>
+      <td>{{ sale.date }}</td>
+      <td>{{ sale.week }}</td>
+      <td>{{ sale.month }}</td>
+      <td>{{ sale.year }}</td>
+      <td>{{ sale.client.full_name|default:'—' }}</td>
+      <td>{{ sale.service.name|default:'—' }}</td>
+      <td>{{ sale.service.service_type.name|default:'—' }}</td>
+      <td>{{ sale.operator.name|default:'—' }}</td>
+      <td>{{ sale.quantity }}</td>
+      <td>{{ sale.service_price|default_if_none:'0' }}</td>
+      <td>{{ sale.service_discount|default_if_none:'0' }}</td>
+      <td>{{ sale.salon_discount|default_if_none:'0' }}</td>
+      <td>{{ sale.total_service|default_if_none:'0' }}</td>
+      <td>{{ sale.total_paid|default_if_none:'0' }}</td>
+      <td>{{ sale.payment_method|default:'—' }}</td>
+      <td>{{ sale.worker_percentage|default_if_none:'0' }}</td>
+      <td>{{ sale.amount_to_pay|default_if_none:'0' }}</td>
+      <td>{% if sale.settled %}<span style="color:#16a34a;font-weight:500;">Pagado</span>{% else %}<span style="color:#dc2626;font-weight:500;">Pendiente</span>{% endif %}</td>
+      <td>{{ sale.notes|default:'—' }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="19" style="text-align:center;color:#888;">Sin ventas para los filtros seleccionados.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function(){
+  $('#salesTable').DataTable({
+    language:{url:'//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'},
+    pageLength:25,
+    order:[[0,'desc']]
+  });
+});
+</script>
+{% endblock %}

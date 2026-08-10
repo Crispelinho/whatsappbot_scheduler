@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Detalle Mensaje Programado{% endblock %}
+{% block header_title %}Detalle de Mensaje Programado{% endblock %}
+{% block header_subtitle %}Estado de envíos a clientes{% endblock %}
+{% block content %}
+<a href="{% url 'dashboard:scheduled_messages' %}" style="text-decoration:none;font-size:.9rem;">← Volver a mensajes programados</a>
+<div style="margin-top:1.2em;margin-bottom:2em;">
+  <h2 style="margin-bottom:.2em;">{{ msg.subject }}</h2>
+  <div style="color:#666;font-size:.98em;">Inicio: {{ msg.start_datetime|date:'Y-m-d H:i' }} | Frecuencia: {{ msg.send_frequency }} | Estado: {{ msg.status }}</div>
+</div>
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow-x:auto;">
+  <table class="table-small" id="clientMsgsTable" style="width:100%;min-width:700px;font-size:.93em;">
+    <thead>
+      <tr>
+        <th>ID Cliente</th>
+        <th>Cliente</th>
+        <th>Fecha Creación</th>
+        <th>Fecha Envío</th>
+        <th>Estado</th>
+        <th>Código</th>
+        <th>Descripción</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr data-retry-count="{{ r.retry_count }}">
+        <td>{{ r.client.id }}</td>
+        <td>{{ r.client.full_name }}</td>
+        <td>{{ r.created_at|date:'Y-m-d H:i' }}</td>
+        <td>{% if r.sent_at %}{{ r.sent_at|date:'Y-m-d H:i' }}{% else %}<span style="color:#888;">—</span>{% endif %}</td>
+        <td>
+          {% if r.status == 'sent' %}<span style="color:#16a34a;font-weight:500;">Enviado</span>
+          {% elif r.status == 'failed' %}<span style="color:#dc2626;font-weight:500;">Fallido</span>
+          {% else %}<span style="color:#2563eb;font-weight:500;">Pendiente</span>
+          {% endif %}
+        </td>
+        <td>{{ r.response_code|default:'—' }}</td>
+        <td style="max-width:220px;overflow-x:auto;">{{ r.description|default:'—' }}</td>
+        <td>
+          <form class="resend-form" data-client-id="{{ r.client.id }}" action="{% url 'dashboard:scheduled_message_resend' msg.id r.client.id %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-primary" style="padding:.2em .7em;font-size:.85em;width:auto;">Reenviar</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;color:#888;">Sin envíos registrados para este mensaje.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% block extra_js %}
+<script>
+$(document).ready(function(){
+  $('#clientMsgsTable').DataTable({
+    destroy: true,
+    language:{url:'//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'},
+    pageLength:25,
+    order:[[2,'desc']]
+  });
+
+  // Alert container
+  if (!$('#alert-container').length) {
+    $('body').append('<div id="alert-container" style="position:fixed;top:30px;right:30px;z-index:9999;"></div>');
+  }
+  function showAlert(msg, type) {
+    var color = type === 'success' ? '#16a34a' : '#dc2626';
+    var bg = type === 'success' ? '#d1fae5' : '#fee2e2';
+    var alert = $('<div></div>').css({background:bg,color:color,padding:'1em 1.5em',borderRadius:'6px',marginBottom:'1em',boxShadow:'0 2px 8px rgba(0,0,0,.08)',fontWeight:'500',fontSize:'1.05em'}).text(msg);
+    $('#alert-container').append(alert);
+    setTimeout(function(){ alert.fadeOut(400,function(){ $(this).remove(); }); }, 2500);
+  }
+
+  // AJAX resend
+  $('.resend-form').on('submit', function(e){
+    e.preventDefault();
+    var $form = $(this);
+    var url = $form.attr('action');
+    var clientId = $form.data('client-id');
+    var $row = $form.closest('tr');
+    var csrftoken = $form.find('input[name="csrfmiddlewaretoken"]').val();
+    $form.find('button').prop('disabled', true);
+
+    // Guardar retry_count inicial
+    var initialRetryCount = parseInt($row.attr('data-retry-count')) || 0;
+    var currentStep = 1;
+    function resendCycle(step, retryCount) {
+      $.ajax({
+        url: url,
+        type: 'POST',
+        headers: {'X-CSRFToken': csrftoken},
+        success: function(data) {
+          if (step === 1) {
+            showAlert('Reenvío solicitado correctamente.', 'success');
+          }
+          var statusHtml = '';
+          if (data.status === 'sent') {
+            statusHtml = '<span style="color:#16a34a;font-weight:500;">Enviado</span>';
+          } else if (data.status === 'failed') {
+            statusHtml = '<span style="color:#dc2626;font-weight:500;">Fallido</span>';
+          } else if (data.status === 'pending') {
+            statusHtml = '<span style="color:#2563eb;font-weight:500;">Pendiente</span>';
+          } else {
+            statusHtml = data.status;
+          }
+          $row.find('td').eq(4).html(statusHtml);
+          $row.find('td').eq(5).text(data.response_code || '—');
+          $row.find('td').eq(6).text(data.description || '—');
+          // Actualizar el atributo data-retry-count con el nuevo valor
+          $row.attr('data-retry-count', data.retry_count);
+          if (step === 1 && data.status === 'pending') {
+            setTimeout(function() { resendCycle(2, data.retry_count); }, 900);
+          } else {
+            $form.find('button').prop('disabled', false);
+          }
+        },
+        error: function(xhr) {
+          showAlert('Error al reenviar el mensaje.', 'error');
+          $form.find('button').prop('disabled', false);
+        }
+      });
+    }
+    resendCycle(currentStep, initialRetryCount);
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

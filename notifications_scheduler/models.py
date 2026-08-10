@@ -20,6 +20,16 @@ class ResponseCode(Enum):
     EXCEPTION = "EXCEPTION"
 
 class ScheduledMessage(models.Model):
+    auto_generate_client_scheduled_messages = models.BooleanField(
+        default=False,
+        verbose_name="Auto generate client scheduled messages",
+        help_text="Si está activo, al guardar se generarán/actualizarán ClientScheduledMessages para todos los clientes del tipo seleccionado y sus MessageResponses."
+    )
+    force_pending_on_update = models.BooleanField(
+        default=False,
+        verbose_name="Force MessageResponse to pending on update",
+        help_text="¿Desea actualizar el estado del mensaje programado a pendiente?"
+    )
     subject = models.CharField("Subject", max_length=255)
     message_text = models.TextField("Message Text")
     start_datetime = models.DateTimeField("Start Date and Time", default=timezone.now)

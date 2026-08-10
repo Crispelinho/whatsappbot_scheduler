@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Métricas de Clientes{% endblock %}
+{% block header_title %}Métricas de Clientes{% endblock %}
+{% block header_subtitle %}Resumen de actividad y ventas{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.chart-container{margin-bottom:2em;background:#fff;padding:1.25em;border:1px solid #ddd;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.table-small{width:100%;border-collapse:collapse;font-size:.95em}
+.table-small th,.table-small td{border:1px solid #e2e2e2;padding:.6em .8em;text-align:left}
+.table-small th{background:#f9f9f9}
+.btn-action{display:inline-block;background:#2563eb;color:#fff;padding:.35em .7em;border-radius:4px;text-decoration:none;font-size:.7rem;white-space:nowrap}
+.btn-action:hover{background:#1d4ed8}
+</style>
+{% endblock %}
+{% block content %}
+<form method="get" style="margin-bottom:1em;display:flex;gap:1em;flex-wrap:wrap;align-items:end;">
+  <div>
+    <label for="client_id">ID cliente:</label>
+    <input type="number" name="client_id" id="client_id" value="{{ client_id|default:'' }}" min="1" placeholder="ID">
+  </div>
+  <div>
+    <label for="client_name">Nombre cliente:</label>
+    <input type="text" name="client_name" id="client_name" value="{{ client_name|default:'' }}" placeholder="Nombre contiene...">
+  </div>
+  <div>
+    <label for="service_type_id">Tipo de servicio:</label>
+    <select name="service_type_id" id="service_type_id">
+      <option value="">Todos</option>
+      {% for st in service_types %}
+        <option value="{{ st.id }}" {% if service_type_id == st.id|stringformat:"s" %}selected{% endif %}>{{ st.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="granularity">Granularidad gráfico:</label>
+    <select name="granularity" id="granularity">
+      <option value="day" {% if granularity == 'day' %}selected{% endif %}>Día</option>
+      <option value="week" {% if granularity == 'week' %}selected{% endif %}>Semana</option>
+      <option value="month" {% if granularity == 'month' %}selected{% endif %}>Mes</option>
+    </select>
+  </div>
+  <div>
+    <label for="start_date">Fecha inicio:</label>
+    <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
+  </div>
+  <div>
+    <label for="end_date">Fecha fin:</label>
+    <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
+  </div>
+  <button type="submit">Aplicar</button>
+  <a href="?" style="margin-left:.5em;">Limpiar</a>
+  <a class="btn-action" style="margin-left:.5em;" href="?{% if client_id %}client_id={{ client_id }}&{% endif %}{% if client_name %}client_name={{ client_name|urlencode }}&{% endif %}{% if service_type_id %}service_type_id={{ service_type_id }}&{% endif %}{% if granularity %}granularity={{ granularity }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}export=csv">Exportar CSV Global</a>
+  {% if client_id or client_name %}<span style="color:#666;">Filtro activo para cliente</span>{% endif %}
+  {% if service_type_id %}<span style="color:#666;">Tipo seleccionado</span>{% endif %}
+  {% if start_date or end_date %}<span style="color:#666;">Rango fechas aplicado</span>{% endif %}
+</form>
+
+<div class="chart-container" style="display:flex;flex-direction:column;gap:.5em;">
+  <h3>Resumen Periodo Actual{% if start_date and end_date %} ({{ start_date }} a {{ end_date }}){% endif %}</h3>
+  <div style="display:flex;flex-wrap:wrap;gap:1em;">
+    <div style="flex:1;min-width:180px;">
+      <strong>Total Pagado Actual:</strong><br>
+      <span>{{ current_period_total }}</span>
+    </div>
+    {% if previous_period_total %}
+    <div style="flex:1;min-width:180px;">
+      <strong>Periodo Previo ({{ previous_period_label }}):</strong><br>
+      <span>{{ previous_period_total }}</span>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <strong>Diferencia Absoluta:</strong><br>
+      <span{% if previous_period_change_negative %} style="color:#dc2626;"{% elif previous_period_change_positive %} style="color:#16a34a;"{% endif %}>{{ previous_period_change }}</span>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <strong>Variación %:</strong><br>
+      {% if previous_period_pct is not None %}
+        {% if previous_period_pct < 0 %}<span style="color:#dc2626;">{{ previous_period_pct|floatformat:2 }}%</span>
+        {% elif previous_period_pct > 0 %}<span style="color:#16a34a;">+{{ previous_period_pct|floatformat:2 }}%</span>
+        {% else %}<span>{{ previous_period_pct|floatformat:2 }}%</span>{% endif %}
+      {% else %}<span style="color:#666;">N/D</span>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% if not previous_period_total and start_date and end_date %}
+    <small style="color:#666;">No se encontró periodo previo comparable (puede ser la primera ventana seleccionada).</small>
+  {% endif %}
+</div>
+
+<div class="chart-container">
+  <h3>Ventas por {{ granularity }}</h3>
+  <canvas id="salesChart" height="120"></canvas>
+  <small style="color:#666;">Mostrando {{ chart_label }}</small>
+  {% if chart_labels|length == 0 %}<div style="color:#888;margin-top:.5em;">Sin datos para los filtros seleccionados.</div>{% endif %}
+</div>
+
+<div class="chart-container">
+  <h3>Servicios más realizados {% if client_id or client_name %}por el cliente{% elif service_type_id %}en tipo seleccionado{% endif %}</h3>
+  <canvas id="servicesTopChart" height="140"></canvas>
+</div>
+
+<div class="chart-container">
+  <h3>Servicios menos realizados {% if service_type_id %}en tipo seleccionado{% endif %}</h3>
+  <canvas id="servicesLeastChart" height="140"></canvas>
+</div>
+
+{% if not client_id and not client_name %}
+<div class="metric-box">
+  <h3>Top Clientes (Visitas)</h3>
+  <table class="table-small" id="topClientsTable">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Visitas</th><th>Última visita</th><th>Total Pagado</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for c in top_clients %}
+      <tr>
+        <td>{{ c.client__id }}</td>
+        <td>{{ c.client__full_name }}</td>
+        <td>{{ c.visits }}</td>
+        <td>{{ c.last_visit }}</td>
+        <td data-order="{{ c.total_paid }}">{{ c.formatted_total_paid }}</td>
+        <td><a class="btn-action" href="{% url 'dashboard:client_detail_metrics' c.client__id %}">Ver métricas</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="6" style="text-align:center;color:#888;">Sin datos</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="metric-box" style="margin-top:1.25em;">
+  <h3>Clientes menos frecuentes</h3>
+  <table class="table-small" id="leastClientsTable">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Visitas</th><th>Última visita</th><th>Total Pagado</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for c in least_clients %}
+      <tr>
+        <td>{{ c.client__id }}</td>
+        <td>{{ c.client__full_name }}</td>
+        <td>{{ c.visits }}</td>
+        <td>{{ c.last_visit }}</td>
+        <td data-order="{{ c.total_paid }}">{{ c.formatted_total_paid }}</td>
+        <td><a class="btn-action" href="{% url 'dashboard:client_detail_metrics' c.client__id %}">Ver métricas</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="6" style="text-align:center;color:#888;">Sin datos</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+<div class="chart-container">
+  <h3>Top Operarias (por monto pagado)</h3>
+  <table class="table-small" id="operatorsTable">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Total Ventas</th><th>Total Pagado</th></tr></thead>
+    <tbody>
+    {% for op in operator_stats %}
+      <tr>
+        <td>{{ op.operator__id }}</td>
+        <td>{{ op.operator__name }}</td>
+        <td>{{ op.total_sales }}</td>
+        <td data-order="{{ op.total_paid }}">{{ op.formatted_total_paid }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" style="text-align:center;color:#888;">Sin datos</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const chartLabels = {{ chart_labels|safe }};
+const chartTotals = {{ chart_totals|safe }};
+const topServiceLabels = {{ client_services_labels|default:top_service_labels|safe }};
+const topServiceCounts = {{ client_services_counts|default:top_service_counts|safe }};
+const leastServiceLabels = {{ least_service_labels|safe }};
+const leastServiceCounts = {{ least_service_counts|safe }};
+function buildLine(id,labels,data,label){
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:label,data:data,borderColor:'rgba(54,162,235,1)',backgroundColor:'rgba(54,162,235,.2)',tension:.25,fill:true}]} ,options:{responsive:true,plugins:{legend:{display:true}}}});
+}
+function buildBar(id,labels,data,label){
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:label,data:data,backgroundColor:'rgba(75,192,192,.5)',borderColor:'rgba(75,192,192,1)',borderWidth:1}]} ,options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{beginAtZero:true}}}});
+}
+buildLine('salesChart', chartLabels, chartTotals, '{{ chart_label }}');
+buildBar('servicesTopChart', topServiceLabels, topServiceCounts, 'Servicios más realizados');
+buildBar('servicesLeastChart', leastServiceLabels, leastServiceCounts, 'Servicios menos realizados');
+
+// Inicializar DataTable para Top Clientes si existe la tabla
+$(document).ready(function(){
+  const $tbl = $('#topClientsTable');
+  if ($tbl.length) {
+    $tbl.DataTable({
+      language: { url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json' },
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      order: [[2, 'desc']], // ordenar por visitas descendente
+    });
+  }
+  const $least = $('#leastClientsTable');
+  if ($least.length) {
+    $least.DataTable({
+      language: { url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json' },
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      order: [[2, 'asc']], // ordenar por visitas ascendente
+    });
+  }
+  const $op = $('#operatorsTable');
+  if ($op.length) {
+    $op.DataTable({
+      language: { url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json' },
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      order: [[3, 'desc']], // ordenar por total pagado
+    });
+  }
+});
+</script>
+{% endblock %}

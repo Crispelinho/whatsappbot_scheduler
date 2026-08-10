@@ -34,8 +34,8 @@ class Client(models.Model):
     full_name = models.CharField(max_length=100, default=generate_unknown_name)
     area_code = models.CharField(max_length=5, default="57")
     original_area_code = models.CharField(max_length=10, blank=True, null=True, help_text="Código de área original para histórico.")
-    phone_number = models.CharField(max_length=20, blank=True, null=True)
-    original_phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Valor original del número para histórico.")
+    phone_number = models.CharField(max_length=100, blank=True, null=True)
+    original_phone_number = models.CharField(max_length=100, blank=True, null=True, help_text="Valor original del número para histórico.")
     second_area_code = models.CharField(max_length=5, blank=True, null=True)
     second_phone_number = models.CharField(max_length=20, blank=True, null=True)
     third_area_code = models.CharField(max_length=5, blank=True, null=True)
@@ -118,8 +118,8 @@ class Client(models.Model):
 
 class PhoneNumberClient(models.Model):
     client = models.ForeignKey('Client', on_delete=models.CASCADE, related_name='phone_numbers')
-    phone_number = models.CharField(max_length=20)
-    original_phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Valor original del número para histórico.")
+    phone_number = models.CharField(max_length=100)
+    original_phone_number = models.CharField(max_length=100, blank=True, null=True, help_text="Valor original del número para histórico.")
     area_code = models.CharField(max_length=10, blank=True, null=True)
     original_area_code = models.CharField(max_length=10, blank=True, null=True, help_text="Código de área original para histórico.")
     is_primary = models.BooleanField(default=False)

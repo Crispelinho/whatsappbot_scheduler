@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Operarias - Métricas{% endblock %}
+{% block header_title %}Operarias{% endblock %}
+{% block header_subtitle %}Métricas y estadísticas de cada operaria{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<style>
+.table-small{width:100%;border-collapse:collapse;font-size:.95em}
+.table-small th,.table-small td{border:1px solid #e2e2e2;padding:.6em .8em;text-align:left}
+.table-small th{background:#f9f9f9}
+.btn-action{display:inline-block;background:#2563eb;color:#fff;padding:.35em .7em;border-radius:4px;text-decoration:none;font-size:.7rem;white-space:nowrap}
+.btn-action:hover{background:#1d4ed8}
+</style>
+{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5em;">
+  <h2 style="margin:0;">Listado de Operarias</h2>
+  <div style="display:flex;gap:.7em;">
+    <a href="{% url 'dashboard:operator_liquidator' %}" class="btn-action" style="background:#059669;">💸 Liquidador semanal</a>
+    <a href="{% url 'dashboard:operator_add' %}" class="btn-action">+ Añadir operaria</a>
+  </div>
+</div>
+<table class="table-small" id="operatorsTable">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Nombre</th>
+      <th>Teléfono</th>
+      <th>Comisión (%)</th>
+      <th>Tipos de Servicio</th>
+      <th>Total Ventas</th>
+      <th>Total Pagado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for op in operators %}
+    <tr>
+      <td>{{ op.id }}</td>
+      <td>{{ op.name }}</td>
+      <td>{{ op.phone_number|default:'—' }}</td>
+      <td>{{ op.commission_percentage }}</td>
+      <td>{% for st in op.service_types.all %}{{ st.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+      <td>{{ op.total_sales }}</td>
+      <td>{{ op.formatted_total_paid }}</td>
+      <td><a class="btn-action" href="{% url 'dashboard:operator_detail' op.id %}">Ver detalle</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8" style="text-align:center;color:#888;">Sin operarias registradas.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function(){
+  $('#operatorsTable').DataTable({
+    language:{url:'//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'},
+    pageLength:25,
+    order:[[6,'desc']]
+  });
+});
+</script>
+{% endblock %}

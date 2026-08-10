@@ -42,4 +42,5 @@ def sale_import(request):
         })
 
 def dashboard_view(request):
-    return render(request, 'sales/dashboard.html')  # ← esta plantilla extiende base.html
+    # Se movió la plantilla a templates/dashboard/dashboard.html
+    return render(request, 'dashboard/dashboard.html')

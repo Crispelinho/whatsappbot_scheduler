@@ -14,6 +14,9 @@ import os
 from pathlib import Path
 from celery.schedules import crontab
 from import_export.formats.base_formats import CSV, XLSX
+from dotenv import load_dotenv
+
+load_dotenv()  # Carga variables de entorno desde .env si existe
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,12 +28,12 @@ GOOGLE_SHEETS_CREDENTIALS_FILE = os.path.join(BASE_DIR, "credentials", "google-s
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-55eduo1dr6p4zdq++#h^gn!9uvtiv7q5tu33_n+8bbi0*7#tf*'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',') if h] or []
 
 
 # Application definition
@@ -127,8 +130,8 @@ USE_I18N = True
 USE_TZ = True
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -155,17 +158,15 @@ IMPORT_EXPORT_FORMATS = [CSV, XLSX]
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-
-STATICFILES_DIRS = [
-    BASE_DIR / "static",  # si tienes una carpeta global de estáticos
-]
+STATIC_ROOT = BASE_DIR / 'static_root'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Google Sheets Import Configuration
-GSHEETS_IMPORT_API_KEY = 'AQ.Ab8RN6K2vORfNSHLMybyXOIlU5JL_HPLyH6wEhe-dXhSH0iXDQ' 
-GSHEETS_IMPORT_CLIENT_ID = '805522274833-fid0f1e3hej534lf2jtsk4a2k39s8jno.apps.googleusercontent.com' 
-GSHEETS_IMPORT_APP_ID = '805522274833'
+# Google Sheets Import Configuration (valores desde entorno)
+GSHEETS_IMPORT_API_KEY = os.getenv('GSHEETS_IMPORT_API_KEY', '')
+GSHEETS_IMPORT_CLIENT_ID = os.getenv('GSHEETS_IMPORT_CLIENT_ID', '')
+GSHEETS_IMPORT_APP_ID = os.getenv('GSHEETS_IMPORT_APP_ID', '')

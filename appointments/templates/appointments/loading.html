@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'sales/loading.css' %}">
+{% endblock %}
+
+{% block content %}
+<div style="text-align:center; padding:4em;">
+    <h2>Cargando datos desde Google Sheets...</h2>
+    <p>Esto puede tardar unos segundos ⏳</p>
+    <div class="spinner" style="margin-top:2em;"></div>
+</div>
+<script>
+    setTimeout(function() {
+        window.location.href = window.location.pathname + '?loading=false';
+    }, 100);
+</script>
+{% endblock %}

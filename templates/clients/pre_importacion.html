@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block extra_head %}{% endblock %}
+{% block content %}
+<h2>Vista previa de clientes desde Google Sheets</h2>
+
+{% if error %}
+    <div style="background:#ffe0e0;color:#900;padding:1em;border-radius:5px;">
+        <strong>Error al acceder a Google Sheets:</strong> {{ error }}
+    </div>
+{% else %}
+        <form method="post" action="{% url 'clients:client_import' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Importar y actualizar clientes</button>
+    </form>
+    <div class="mb-3">
+        <a href="{% url 'clients:unique_clients' %}" class="btn btn-primary btn-lg" style="margin-right:10px;">Ver clientes únicos</a>
+        <a href="{% url 'clients:duplicated_clients' %}" class="btn btn-warning btn-lg" style="margin-right:10px;">Ver clientes duplicados</a>
+        <a href="{% url 'clients:new_clients' %}" class="btn btn-success btn-lg">Ver nuevos clientes</a>
+    </div>
+
+    <p>Total de registros detectados: {{ rows|length }}</p>
+
+    <table id="tabla-clientes" class="display nowrap" style="width:100%;">
+        <thead>
+            <tr>
+                {% for key in rows.0.keys %}
+                    <th>{{ key }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                {% for val in row.values %}
+                    <td>{{ val }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#tabla-clientes').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            pageLength: 25,
+            responsive: true
+        });
+    });
+</script>
+{% endblock %}

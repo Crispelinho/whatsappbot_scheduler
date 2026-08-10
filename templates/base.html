@@ -22,9 +22,18 @@
         <h2 style="margin-bottom:2em;">📊 Dashboard</h2>
         <a href="{% url 'clients:phone_number_errors_clients' %}">Errores de Clientes</a>
         <a href="{% url 'clients:phone_number_errors_phones' %}">Errores de Teléfonos Alternos</a>
+
+        <a href="{% url 'clients:client_pre_import' %}"
+            class="{% if request.resolver_match.url_name == 'client_pre_import' %}active{% endif %}">
+            Importar Clientes 2025
+        </a>
         <a href="{% url 'sales:sale_pre_import' %}"
             class="{% if request.resolver_match.url_name == 'sale_pre_import' %}active{% endif %}">
             Importar Ventas 2025
+        </a>
+        <a href="{% url 'appointment_pre_import' %}"
+            class="{% if request.resolver_match.url_name == 'appointment_pre_import' %}active{% endif %}">
+            Importar Citas 2025
         </a>
 
         <a href="{% url 'dashboard:clients_metrics' %}" class="{% if request.resolver_match.url_name == 'clients_metrics' %}active{% endif %}">
@@ -41,6 +50,9 @@
         </a>
         <a href="{% url 'dashboard:operator_liquidator' %}" class="{% if request.resolver_match.url_name == 'operator_liquidator' %}active{% endif %}">
             Liquidador semanal
+        </a>
+        <a href="{% url 'appointment_list' %}" class="{% if request.resolver_match.url_name == 'appointment_list' %}active{% endif %}">
+            Agenda de Citas
         </a>
 
         <!-- Agrega más enlaces según tus apps -->

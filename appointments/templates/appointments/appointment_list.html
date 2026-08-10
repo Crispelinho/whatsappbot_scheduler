@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Agenda de Citas</h1>
+
+<button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addAppointmentModal">
+    Añadir nueva cita
+</button>
+
+<table border="1" class="table table-bordered table-sm table-hover">
+        <thead>
+                <tr>
+                        <th>Cliente</th>
+                        <th>Servicio</th>
+                        <th>Operaria</th>
+                        <th>Fecha y hora</th>
+                        <th>Duración</th>
+                        <th>Notas</th>
+                        <th>Estado</th>
+                </tr>
+        </thead>
+        <tbody>
+                {% for a in appointments %}
+                <tr>
+                        <td>{{ a.client }}</td>
+                        <td>{{ a.service }}</td>
+                        <td>{{ a.operator }}</td>
+                        <td>{{ a.scheduled_datetime }}</td>
+                        <td>{{ a.duration_minutes }} min</td>
+                        <td>{{ a.notes }}</td>
+                        <td>{{ a.get_status_display }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7">No hay citas agendadas.</td></tr>
+                {% endfor %}
+        </tbody>
+</table>
+
+<!-- Modal para añadir nueva cita -->
+<div class="modal fade" id="addAppointmentModal" tabindex="-1" aria-labelledby="addAppointmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addAppointmentModalLabel">Añadir nueva cita</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label for="client" class="form-label">Cliente</label>
+                        <input type="text" class="form-control" id="client" name="client" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="service" class="form-label">Servicio</label>
+                        <input type="text" class="form-control" id="service" name="service" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="operator" class="form-label">Operaria</label>
+                        <input type="text" class="form-control" id="operator" name="operator">
+                    </div>
+                    <div class="mb-2">
+                        <label for="scheduled_datetime" class="form-label">Fecha y hora</label>
+                        <input type="datetime-local" class="form-control" id="scheduled_datetime" name="scheduled_datetime" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="duration_minutes" class="form-label">Duración (minutos)</label>
+                        <input type="number" class="form-control" id="duration_minutes" name="duration_minutes" value="60" min="1">
+                    </div>
+                    <div class="mb-2">
+                        <label for="notes" class="form-label">Notas</label>
+                        <textarea class="form-control" id="notes" name="notes"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label for="status" class="form-label">Estado</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="scheduled">Agendada</option>
+                            <option value="completed">Completada</option>
+                            <option value="cancelled">Cancelada</option>
+                            <option value="no_show">No asistió</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar cita</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

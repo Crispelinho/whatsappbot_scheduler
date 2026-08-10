@@ -225,3 +225,7 @@ debug/*
 *.json
 credentials/*
 debug/
+
+# Media assets (user-uploaded / ephemeral promotional content)
+media/
+scheduled_messages/

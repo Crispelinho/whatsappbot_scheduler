@@ -5,7 +5,90 @@ from django.db import models
 
 from .models import Client, PhoneNumberClient, PhoneFormatError
 from .utils import get_strategy_and_correction, split_and_clean_phones, get_area_code_for_number
+from .importers import download_import_clients_from_sheet, import_create_client
 
+# Vista de preimportación de clientes
+def client_pre_import(request):
+    if request.GET.get("loading") != "false":
+        return render(request, "clients/loading.html")
+
+    rows, error = download_import_clients_from_sheet()
+    if error:
+        return render(request, "clients/pre_importacion.html", {"error": error})
+    # Guardar los datos en la sesión para otras vistas
+    request.session["pre-imported_clients_rows"] = rows
+    return render(request, "clients/pre_importacion.html", {"rows": rows})
+
+# Unique clients view
+def unique_clients(request):
+    rows = request.session.get("pre-imported_clients_rows", [])
+    unique_rows = []
+    seen = set()
+    for row in rows:
+        if row.get("Teléfono") or row.get("Nombres"):
+            key = (row.get("Teléfono"), row.get("Nombres"))
+            if key not in seen:
+                unique_rows.append(row)
+                seen.add(key)
+    return render(request, "clients/clientes_unicos.html", {"rows": unique_rows})
+
+# Duplicated clients view
+def duplicated_clients(request):
+    rows = request.session.get("pre-imported_clients_rows", [])
+    seen = set()
+    duplicates = []
+    for row in rows:
+        if row.get("Teléfono") or row.get("Nombres"):
+            key = (row.get("Teléfono"), row.get("Nombres"))
+            if key in seen:
+                duplicates.append(row)
+            else:
+                seen.add(key)
+    return render(request, "clients/clientes_duplicados.html", {"rows": duplicates})
+
+# New clients view (not in DB)
+def new_clients(request):
+    rows = request.session.get("pre-imported_clients_rows", [])
+    import_rows = [row for row in rows if row.get("Teléfono")]
+    # Obtener set de teléfonos existentes en la base de datos
+    existing_phones = set(Client.objects.values_list("phone_number", flat=True))
+    new_rows = []
+    for row in import_rows:
+        if str(row.get("Teléfono")) not in existing_phones:
+            new_rows.append(row)
+    request.session["imported_clients_rows"] = new_rows
+    return render(request, "clients/new_clients.html", {"rows": new_rows})
+
+# Vista de importación de clientes
+def client_import(request):
+    if request.method == "POST":
+        rows, error = download_import_clients_from_sheet()
+        if error:
+            return render(request, "clients/resultado_importacion.html", {
+                "rows": [],
+                "errores": [{"error": error}],
+            })
+
+        errores_por_fila = []
+        counters = {"exitos": 0, "fallos": 0}
+
+        for i, row in enumerate(rows):
+            ok, err = import_create_client(row, counters)
+            if not ok:
+                row["Error"] = err
+                errores_por_fila.append(row)
+                counters["fallos"] += 1
+            else:
+                row["Error"] = ""
+                counters["exitos"] += 1
+
+        return render(request, "clients/resultado_importacion.html", {
+            "rows": rows,
+            "errores": errores_por_fila,
+            "counters": counters,
+        })
+    else:
+        return render(request, "clients/resultado_importacion.html", {"rows": [], "errores": [], "counters": {}})
 
 def enrich_client_with_corrections(client: Client):
     corrections = get_strategy_and_correction(client.phone_number, client.area_code) or []

@@ -10,24 +10,30 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 from celery.schedules import crontab
 from import_export.formats.base_formats import CSV, XLSX
+from dotenv import load_dotenv
+
+load_dotenv()  # Carga variables de entorno desde .env si existe
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Root directory for credentials
+GOOGLE_SHEETS_CREDENTIALS_FILE = os.path.join(BASE_DIR, "credentials", "google-sheets.json")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-55eduo1dr6p4zdq++#h^gn!9uvtiv7q5tu33_n+8bbi0*7#tf*'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',') if h] or []
 
 
 # Application definition
@@ -47,6 +53,7 @@ INSTALLED_APPS = [
     'dashboard',
     'django_celery_beat',
     'django_bootstrap_icons',
+    'gsheets_import',
 ]
 
 MIDDLEWARE = [
@@ -64,7 +71,7 @@ ROOT_URLCONF = 'whatsappbot_scheduler.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -82,10 +89,15 @@ WSGI_APPLICATION = 'whatsappbot_scheduler.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Configuración para PostgreSQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'whatsappbot_scheduler',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -123,8 +135,8 @@ USE_I18N = True
 USE_TZ = True
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -151,8 +163,15 @@ IMPORT_EXPORT_FORMATS = [CSV, XLSX]
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'static_root'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Google Sheets Import Configuration (valores desde entorno)
+GSHEETS_IMPORT_API_KEY = os.getenv('GSHEETS_IMPORT_API_KEY', '')
+GSHEETS_IMPORT_CLIENT_ID = os.getenv('GSHEETS_IMPORT_CLIENT_ID', '')
+GSHEETS_IMPORT_APP_ID = os.getenv('GSHEETS_IMPORT_APP_ID', '')

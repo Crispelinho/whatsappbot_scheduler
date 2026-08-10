@@ -1,10 +1,11 @@
+<!-- templates/clients/phone_number_error_clients.html -->
 {% extends 'base.html' %}
 {% load static %}
-{% block content %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="{% static 'clients/datatable_custom.css' %}">
-<link rel="stylesheet" href="{% static 'clients/custom_theme.css' %}">
 
+{% block extra_head %}
+{% endblock %}
+
+{% block content %}
 <h2>Corrección de números de clientes</h2>
 <p style="font-size:1.1em;margin-bottom:1em;">Total de clientes con error: <strong>{{ total_clients }}</strong></p>
 
@@ -76,61 +77,19 @@
 </form>
 {% endblock %}
 {% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="{% static 'js/selection_utils.js' %}"></script>
 <script>
-function updateSelectAllState(name, selectAllId) {
-    const checkboxes = document.getElementsByName(name);
-    const selectAll = document.getElementById(selectAllId);
-    let checkedCount = 0;
-    for (let cb of checkboxes) {
-        if (cb.checked) checkedCount++;
-    }
-    if (checkedCount === 0) {
-        selectAll.checked = false;
-        selectAll.indeterminate = false;
-    } else if (checkedCount === checkboxes.length) {
-        selectAll.checked = true;
-        selectAll.indeterminate = false;
-    } else {
-        selectAll.checked = false;
-        selectAll.indeterminate = true;
-    }
-}
-function toggleAll(name, selectAllId) {
-    const checkboxes = document.getElementsByName(name);
-    const selectAll = document.getElementById(selectAllId);
-    for (let cb of checkboxes) {
-        cb.checked = selectAll.checked;
-    }
-    updateSelectAllState(name, selectAllId);
-}
 $(document).ready(function() {
     $('#clients_table').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'
-        },
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json' },
         paging: true,
         searching: true,
         ordering: true,
         info: true,
         lengthMenu: [10, 25, 50, 100],
-        columnDefs: [
-            { orderable: false, targets: 0 },
-            { searchable: false, targets: [0,7,8] }
-        ]
+        columnDefs: [ { orderable: false, targets: 0 }, { searchable: false, targets: [0,7,8] } ]
     });
-    const clientChecks = document.getElementsByName('selected_clients');
-    const selectAllClients = document.getElementById('select_all_clients');
-    for (let cb of clientChecks) {
-        cb.addEventListener('change', function() {
-            updateSelectAllState('selected_clients', 'select_all_clients');
-        });
-    }
-    selectAllClients.addEventListener('change', function() {
-        toggleAll('selected_clients', 'select_all_clients');
-    });
-    updateSelectAllState('selected_clients', 'select_all_clients');
+    initSelection('selected_clients','select_all_clients');
 });
 </script>
 {% endblock %}

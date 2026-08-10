@@ -1,0 +1,20 @@
+.card-grid {
+    display: flex;
+    gap: 1em;
+}
+.card {
+    background: white;
+    padding: 1em;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+}
+
+.sidebar a.active {
+    background: #1d2a4f;
+    padding: 0.5em;
+    border-radius: 4px;
+}
+

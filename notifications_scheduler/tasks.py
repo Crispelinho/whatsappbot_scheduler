@@ -8,6 +8,7 @@ from .senders.whatsapp_sender import WhatsAppSeleniumSender
 
 @shared_task
 def send_scheduled_messages_task():
+    """Enqueue the task to send scheduled WhatsApp messages."""
     print("Celery está ejecutando la tarea de envío programado")
     call_command('send_scheduled_messages')
 

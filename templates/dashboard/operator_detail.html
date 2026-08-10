@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Detalle Operaria{% endblock %}
+{% block header_title %}Detalle de Operaria{% endblock %}
+{% block header_subtitle %}Estadísticas y servicios realizados{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<style>
+.table-small{width:100%;border-collapse:collapse;font-size:.95em}
+.table-small th,.table-small td{border:1px solid #e2e2e2;padding:.6em .8em;text-align:left}
+.table-small th{background:#f9f9f9}
+.metric-box{background:#fff;padding:1em 1.5em;border:1px solid #e2e2e2;border-radius:8px;margin-bottom:1.5em;}
+</style>
+{% endblock %}
+{% block content %}
+<a href="{% url 'dashboard:operators_metrics' %}" style="text-decoration:none;font-size:.9rem;">← Volver a operarias</a>
+<div class="metric-box">
+  <h2 style="margin-top:0;">{{ operator.name }}</h2>
+  <p><strong>Teléfono:</strong> {{ operator.phone_number|default:'—' }}</p>
+  <p><strong>Comisión:</strong> {{ operator.commission_percentage }}%</p>
+  <p><strong>Tipos de servicio:</strong> {% for st in operator.service_types.all %}{{ st.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</p>
+</div>
+<div class="metric-box">
+  <h3>Resumen de Ventas</h3>
+  <p><strong>Total ventas:</strong> {{ total_sales }}</p>
+  <p><strong>Total pagado:</strong> {{ total_paid }}</p>
+  <p><strong>Servicios realizados:</strong> {{ services_count }}</p>
+  <p><strong>Clientes atendidos:</strong> {{ clients_count }}</p>
+</div>
+<div class="metric-box">
+  <h3>Servicios más realizados</h3>
+  <table class="table-small" id="servicesTable">
+    <thead><tr><th>Servicio</th><th>Cantidad</th></tr></thead>
+    <tbody>
+      {% for s in top_services %}
+      <tr><td>{{ s.service__name }}</td><td>{{ s.count }}</td></tr>
+      {% empty %}<tr><td colspan="2">Sin datos</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="metric-box">
+  <h3>Clientes atendidos</h3>
+  <table class="table-small" id="clientsTable">
+    <thead><tr><th>Cliente</th><th>Visitas</th></tr></thead>
+    <tbody>
+      {% for c in top_clients %}
+      <tr><td>{{ c.client__full_name }}</td><td>{{ c.count }}</td></tr>
+      {% empty %}<tr><td colspan="2">Sin datos</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function(){
+  $('#servicesTable').DataTable({
+    language:{url:'//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'},
+    pageLength:10,
+    order:[[1,'desc']]
+  });
+  $('#clientsTable').DataTable({
+    language:{url:'//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'},
+    pageLength:10,
+    order:[[1,'desc']]
+  });
+});
+</script>
+{% endblock %}
